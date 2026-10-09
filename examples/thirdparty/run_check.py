@@ -26,11 +26,6 @@ async def main(fetch_bin: str) -> int:
         f'command = ["$PYTHON", "-m", "weir_testbed.servers", "files"]\nenv = {{ WEIR_WORLD = "{world}" }}',
     )
     pol.write_text(text)
-    params = StdioServerParameters(
-        command=sys.executable,
-        args=["-m", "mcp_weir", "--db", str(tmp / "w.db"), "run", "--policy", str(pol)],
-        env={**os.environ},
-    )
     ok = True
 
     def params(session: str) -> StdioServerParameters:
