@@ -58,21 +58,18 @@ def test_hmac_key_is_stable_per_database_and_env_overrides(tmp_path, monkeypatch
     assert s.hmac_key() == bytes.fromhex("ab" * 32)
 
 
-def test_session_roundtrip_and_integrity_tag(store, tmp_path):
-    row = SessionRow("s1", "pol", 2, 1, 3, 11, 7, False, b"blob")
-    store.save_session(row)
-    assert store.load_session("s1") == row
-    upd = SessionRow("s1", "pol", 1, 0, 4, 12, 8, True, b"")
-    store.update_session_state(upd)
+def test_session_roundtrip_and_integrity_tag(store):
+    store.save_session(SessionRow("s1", "pol", 2, 1, 3, 11, 7, False, b'{"k":1}'), [b"entry-0", b"entry-1"])
     got = store.load_session("s1")
-    assert (got.ctx_conf, got.external_count, got.n_calls, got.version, got.blind, got.tracker) == (
-        1,
-        4,
-        12,
-        8,
-        True,
-        b"blob",
-    )
+    assert got.deltas == (b"entry-0", b"entry-1") and got.tracker == b'{"k":1}' and got.ctx_conf == 2
+    store.save_session(
+        SessionRow("s1", "pol", 2, 1, 3, 11, 8, False, b'{"k":1}'), [b"entry-2"]
+    )  # appends, never rewrites
+    assert store.load_session("s1").deltas == (b"entry-0", b"entry-1", b"entry-2")
+    store.update_session_state(SessionRow("s1", "pol", 1, 0, 4, 12, 9, True, b'{"k":1}'))
+    got = store.load_session("s1")
+    assert (got.ctx_conf, got.external_count, got.n_calls, got.version, got.blind) == (1, 4, 12, 9, True)
+    assert len(got.deltas) == 3  # a state update does not touch the journal
     assert store.load_session("nope") is None
     with pytest.raises(KeyError):
         store.update_session_state(SessionRow("missing", "pol", 0, 0, 0, 0, 0))
@@ -88,13 +85,18 @@ def test_session_roundtrip_and_integrity_tag(store, tmp_path):
         "UPDATE sessions SET blind=0",
         "UPDATE sessions SET version=version+1",
         "UPDATE sessions SET policy_sha='x'",
-        "UPDATE sessions SET tracker=X'00'",  # swap the tracker for an empty one
+        "UPDATE sessions SET tracker=X'00'",  # change the tracker parameters
+        "DELETE FROM tracker_deltas WHERE idx=0",  # forget the first labelled result
+        "DELETE FROM tracker_deltas WHERE idx=2",  # forget the last one
+        "UPDATE tracker_deltas SET blob=X'00' WHERE idx=1",  # replace an entry
+        "INSERT INTO tracker_deltas(session_id, idx, blob) VALUES('s1', 3, X'01')",  # add one
+        "DELETE FROM tracker_deltas",
     ],
 )
-def test_tampering_with_a_persisted_session_is_detected(tmp_path, tamper):
+def test_tampering_with_a_persisted_session_or_its_tracker_journal_is_detected(tmp_path, tamper):
     path = str(tmp_path / "t.db")
     s = Store(path)
-    s.save_session(SessionRow("s1", "pol", 2, 1, 3, 11, 7, True, b"blob-bytes"))
+    s.save_session(SessionRow("s1", "pol", 2, 1, 3, 11, 7, True, b"params"), [b"e0", b"e1", b"e2"])
     s.close()
     db = sqlite3.connect(path)
     db.execute(tamper)

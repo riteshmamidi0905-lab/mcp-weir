@@ -14,11 +14,11 @@ import secrets
 import sqlite3
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 GENESIS = "0" * 64
 
 _SCHEMA = """
@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS events(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, session_id TEXT, kind TEXT NOT NULL,
   payload TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS events_session ON events(session_id, seq);
+CREATE TABLE IF NOT EXISTS tracker_deltas(
+  session_id TEXT NOT NULL, idx INTEGER NOT NULL, blob BLOB NOT NULL, PRIMARY KEY(session_id, idx));
 CREATE TABLE IF NOT EXISTS approvals(
   id TEXT PRIMARY KEY, session_id TEXT NOT NULL, call_hash TEXT NOT NULL, tool TEXT NOT NULL,
   rules TEXT NOT NULL, summary TEXT NOT NULL, state TEXT NOT NULL, created REAL NOT NULL, expires REAL NOT NULL,
@@ -62,7 +64,8 @@ class SessionRow:
     n_calls: int
     version: int
     blind: bool = False
-    tracker: bytes = b""
+    tracker: bytes = b""  # the tracker's parameters (small); its content lives in tracker_deltas
+    deltas: tuple[bytes, ...] = ()  # filled by load_session only: the tracker journal, in order
 
 
 @dataclass(frozen=True)
@@ -137,36 +140,56 @@ class Store:
         )
         return hmac.new(self.hmac_key(), msg.encode(), hashlib.sha256).hexdigest()
 
-    def save_session(self, row: SessionRow) -> None:
-        """Insert or replace a session including its tracker. The row carries a MAC over every field and the tracker's
-        digest, so a modified context label, counter or tracker is detected on load. With the key in the same file this
-        catches accidents and casual edits only; with WEIR_HMAC_KEY supplied from outside it resists editing the file."""
-        tsha = hashlib.sha256(row.tracker).hexdigest()
+    @staticmethod
+    def _chain(prev: str, blob: bytes) -> str:
+        return hashlib.sha256((prev + hashlib.sha256(blob).hexdigest()).encode()).hexdigest()
+
+    def save_session(self, row: SessionRow, deltas: Sequence[bytes] = ()) -> None:
+        """Insert or update a session and append tracker journal entries, in one transaction.
+
+        The row carries a MAC over every field and a rolling digest of the tracker journal, so a modified context label,
+        counter, or an added, removed or edited journal entry is detected on load. With the key in the same file (the
+        default) this catches accidents and casual edits only; with WEIR_HMAC_KEY supplied from outside the file it
+        resists editing the file."""
         with self._lock:
-            self._db.execute(
-                "INSERT INTO sessions(id, created, policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls,"
-                " blind, tracker_sha, mac) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET policy_sha=excluded.policy_sha,"
-                " ctx_conf=excluded.ctx_conf, ctx_integ=excluded.ctx_integ, external_count=excluded.external_count,"
-                " tracker=excluded.tracker, version=excluded.version, n_calls=excluded.n_calls, blind=excluded.blind,"
-                " tracker_sha=excluded.tracker_sha, mac=excluded.mac",
-                (
-                    row.id,
-                    self.clock(),
-                    row.policy_sha,
-                    row.ctx_conf,
-                    row.ctx_integ,
-                    row.external_count,
-                    row.tracker,
-                    row.version,
-                    row.n_calls,
-                    int(row.blind),
-                    tsha,
-                    self._mac(row, tsha),
-                ),
-            )
+            self._db.execute("BEGIN IMMEDIATE")
+            try:
+                cur = self._db.execute("SELECT tracker_sha FROM sessions WHERE id=?", (row.id,)).fetchone()
+                digest = cur[0] if cur else self._chain("weir-tracker-v1", row.tracker)
+                n = self._db.execute("SELECT COUNT(*) FROM tracker_deltas WHERE session_id=?", (row.id,)).fetchone()[0]
+                for i, blob in enumerate(deltas):
+                    self._db.execute(
+                        "INSERT INTO tracker_deltas(session_id, idx, blob) VALUES(?,?,?)", (row.id, n + i, blob)
+                    )
+                    digest = self._chain(digest, blob)
+                self._db.execute(
+                    "INSERT INTO sessions(id, created, policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls,"
+                    " blind, tracker_sha, mac) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET policy_sha=excluded.policy_sha,"
+                    " ctx_conf=excluded.ctx_conf, ctx_integ=excluded.ctx_integ, external_count=excluded.external_count,"
+                    " tracker=excluded.tracker, version=excluded.version, n_calls=excluded.n_calls, blind=excluded.blind,"
+                    " tracker_sha=excluded.tracker_sha, mac=excluded.mac",
+                    (
+                        row.id,
+                        self.clock(),
+                        row.policy_sha,
+                        row.ctx_conf,
+                        row.ctx_integ,
+                        row.external_count,
+                        row.tracker,
+                        row.version,
+                        row.n_calls,
+                        int(row.blind),
+                        digest,
+                        self._mac(row, digest),
+                    ),
+                )
+                self._db.execute("COMMIT")
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
 
     def update_session_state(self, row: SessionRow) -> None:
-        """Update everything except the tracker (unchanged); the stored tracker digest stays bound by the new MAC."""
+        """Update everything except the tracker journal (unchanged); its digest stays bound by the new MAC."""
         with self._lock:
             self._db.execute("BEGIN IMMEDIATE")
             try:
@@ -198,10 +221,22 @@ class Store:
                 " FROM sessions WHERE id=?",
                 (sid,),
             ).fetchone()
+            blobs = [
+                (i, b)
+                for i, b in self._db.execute(
+                    "SELECT idx, blob FROM tracker_deltas WHERE session_id=? ORDER BY idx", (sid,)
+                )
+            ]
         if r is None:
             return None
-        row = SessionRow(sid, r[0], r[1], r[2], r[3], r[6], r[5], bool(r[7]), r[4] or b"")
-        if hashlib.sha256(row.tracker).hexdigest() != r[8] or not hmac.compare_digest(self._mac(row, r[8]), r[9]):
+        params = r[4] or b""
+        digest = self._chain("weir-tracker-v1", params)
+        for expect, (i, blob) in enumerate(blobs):
+            if i != expect:
+                raise StateIntegrityError(f"session {sid}: tracker journal entry {expect} is missing")
+            digest = self._chain(digest, blob)
+        row = SessionRow(sid, r[0], r[1], r[2], r[3], r[6], r[5], bool(r[7]), params, tuple(b for _, b in blobs))
+        if digest != r[8] or not hmac.compare_digest(self._mac(row, r[8]), r[9]):
             raise StateIntegrityError(f"session {sid}: persisted state does not match its integrity tag")
         return row
 

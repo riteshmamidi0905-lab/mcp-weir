@@ -19,9 +19,9 @@ All gateway arms use `examples/policies/workspace.toml` (hashed in the freeze) a
 |---|---|---|
 | **A0** | no gateway: the agent talks to the servers directly | none |
 | **A1** | static approval gates, argument-blind (what per-tool gates in the author's earlier projects give) | `R-GATE` on every egress and write call |
-| **A2** | value tier | `R-DEST-UNTRUSTED`, `R-FLOW-CONF` |
+| **A2** | value tier | `R-DEST-UNTRUSTED`, `R-FLOW-CONF`, and `R-TRACKER-LIMIT` (the value tier's blindness guard) |
 | **A3s** | session tier only | `R-TRIFECTA`, `R-UNTRUSTED-READ`, `R-EGRESS-BUDGET` |
-| **A3** | value + session tiers, session rules ask for approval (the shipped default) | all of A2 and A3s |
+| **A3** | value + session tiers, session rules ask for approval (the shipped defaults) | all of the above |
 | **A3d** | as A3 but the three session rules **deny** (no approval path) | all, session rules = deny |
 
 ## 3 · The human (approver modes)

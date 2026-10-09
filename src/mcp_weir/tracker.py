@@ -116,6 +116,47 @@ class Match:
     hits: int
 
 
+def _encode_entry(
+    src: Source, k: int, unit_lengths: list[int], grams: list[int], units: list[int], ents: list[int]
+) -> bytes:
+    """One registered source as a compact, compressed record: metadata plus the keyed hashes it added."""
+    head = json.dumps(
+        {
+            "c": src.call_id,
+            "t": src.tool,
+            "l": [int(src.label.conf), int(src.label.integ)],
+            "n": src.n_grams,
+            "tr": src.truncated,
+            "k": k,
+            "u": unit_lengths,
+        }
+    ).encode()
+    parts = [struct.pack("<I", len(head)), head]
+    for hs in (grams, units, ents):
+        arr = array("Q", hs)
+        if sys.byteorder != "little":
+            arr.byteswap()
+        parts += [struct.pack("<I", len(arr)), arr.tobytes()]
+    return zlib.compress(b"".join(parts), 3)
+
+
+def _decode_entry(blob: bytes) -> tuple[dict[str, Any], list[array[int]]]:
+    raw = zlib.decompress(blob)
+    (hlen,) = struct.unpack_from("<I", raw, 0)
+    head = json.loads(raw[4 : 4 + hlen])
+    pos, arrays = 4 + hlen, []
+    for _ in range(3):
+        (n,) = struct.unpack_from("<I", raw, pos)
+        pos += 4
+        arr: array[int] = array("Q")
+        arr.frombytes(raw[pos : pos + 8 * n])
+        pos += 8 * n
+        if sys.byteorder != "little":
+            arr.byteswap()
+        arrays.append(arr)
+    return head, arrays
+
+
 class Tracker:
     def __init__(
         self,
@@ -138,6 +179,7 @@ class Tracker:
         self._entities: dict[int, list[int]] = {}
         self._unit_lengths: set[int] = set()
         self._k_used: set[int] = set()
+        self._journal: list[bytes] = []  # one compact entry per registered source, awaiting persistence
         self._templates = {
             tag: hashlib.blake2b(key=key, digest_size=8, person=tag) for tag in (b"gram", b"unit", b"ent")
         }
@@ -159,26 +201,34 @@ class Tracker:
         n_grams = 0
         norm = normalize(text)
         k = self.k_secret if label.conf == Conf.SECRET else self.k_internal if label.conf == Conf.INTERNAL else 0
+        gram_h: list[int] = []
+        unit_h: list[int] = []
+        ent_h: list[int] = []
+        lengths: set[int] = set()
         if k and len(norm) >= k:
-            n_grams = self._add_grams(norm, k, idx)
+            n_grams = self._add_grams(norm, k, idx, gram_h)
             self._k_used.add(k)
         if label.conf == Conf.SECRET:
-            self._add_units(text, idx)
+            lengths = self._add_units(text, idx, unit_h)
         if label.integ == Integ.UNTRUSTED:
-            self._add_entities(text, idx)
-        self.sources.append(Source(call_id, tool, label, n_grams, truncated))
+            self._add_entities(text, idx, ent_h)
+        src = Source(call_id, tool, label, n_grams, truncated)
+        self.sources.append(src)
+        self._journal.append(_encode_entry(src, k if n_grams else 0, sorted(lengths), gram_h, unit_h, ent_h))
         return idx
 
-    def _add_grams(self, norm: str, k: int, idx: int) -> int:
+    def _add_grams(self, norm: str, k: int, idx: int, added: list[int]) -> int:
         n = 0
         for i in range(len(norm) - k + 1):
-            lst = self._grams.setdefault(self._h(b"gram", norm[i : i + k]), [])
+            h = self._h(b"gram", norm[i : i + k])
+            lst = self._grams.setdefault(h, [])
             if not lst or lst[-1] != idx:
                 lst.append(idx)
+                added.append(h)
             n += 1
         return n
 
-    def _add_units(self, text: str, idx: int) -> None:
+    def _add_units(self, text: str, idx: int, added: list[int]) -> set[int]:
         cands: set[str] = {text}
         for line in text.splitlines():
             cands.add(line)
@@ -196,19 +246,26 @@ class Tracker:
                 stack.extend(cur.values())
             elif isinstance(cur, list):
                 stack.extend(cur)
+        lengths: set[int] = set()
         for c in cands:
             n = normalize(c)
             if self.min_unit <= len(n) < self.k_secret:
-                lst = self._units.setdefault(self._h(b"unit", n), [])
+                h = self._h(b"unit", n)
+                lst = self._units.setdefault(h, [])
                 if not lst or lst[-1] != idx:
                     lst.append(idx)
+                    added.append(h)
                 self._unit_lengths.add(len(n))
+                lengths.add(len(n))
+        return lengths
 
-    def _add_entities(self, text: str, idx: int) -> None:
+    def _add_entities(self, text: str, idx: int, added: list[int]) -> None:
         for e in self._entities_of(text):
-            lst = self._entities.setdefault(self._h(b"ent", e), [])
+            h = self._h(b"ent", e)
+            lst = self._entities.setdefault(h, [])
             if not lst or lst[-1] != idx:
                 lst.append(idx)
+                added.append(h)
 
     @staticmethod
     def _entities_of(text: str) -> set[str]:
@@ -277,7 +334,44 @@ class Tracker:
             out.append(Match(s, src.call_id, src.tool, src.label, kind, via, hits))
         return out
 
-    # ------------------------------------------------------------------ persistence
+    # ------------------------------------------------------------------ incremental persistence (what the gateway uses)
+    def params(self) -> bytes:
+        return json.dumps(
+            {
+                "k_secret": self.k_secret,
+                "k_internal": self.k_internal,
+                "min_unit": self.min_unit,
+                "max_text": self.max_text,
+                "max_sources": self.max_sources,
+            },
+            sort_keys=True,
+        ).encode()
+
+    def pending(self) -> list[bytes]:
+        """Journal entries not yet confirmed as persisted (a copy)."""
+        return list(self._journal)
+
+    def confirm(self, n: int) -> None:
+        """The first ``n`` pending entries are safely stored."""
+        del self._journal[:n]
+
+    @classmethod
+    def from_journal(cls, key: bytes, params: bytes, entries: Iterable[bytes]) -> Tracker:
+        t = cls(key, **json.loads(params))
+        for blob in entries:
+            head, (grams, units, ents) = _decode_entry(blob)
+            idx = len(t.sources)
+            conf, integ = head["l"]
+            t.sources.append(Source(head["c"], head["t"], Label(Conf(conf), Integ(integ)), head["n"], bool(head["tr"])))
+            if head["k"]:
+                t._k_used.add(head["k"])
+            t._unit_lengths.update(head["u"])
+            for table, hashes in ((t._grams, grams), (t._units, units), (t._entities, ents)):
+                for h in hashes:
+                    table.setdefault(h, []).append(idx)
+        return t
+
+    # ------------------------------------------------------------------ snapshot persistence (tests, tools)
     def stats(self) -> dict[str, int]:
         return {
             "sources": len(self.sources),

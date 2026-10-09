@@ -217,7 +217,7 @@ class Gateway:
                         f"session {sid} was created under a different policy ({row.policy_sha[:12]} vs {self.policy.digest[:12]}); "
                         "refusing to resume (allow_policy_change=True overrides)"
                     )
-                tracker = Tracker.load(self._key, row.tracker) if row.tracker else Tracker(self._key)
+                tracker = Tracker.from_journal(self._key, row.tracker, row.deltas)
                 s = Session(
                     sid,
                     tracker,
@@ -225,7 +225,6 @@ class Gateway:
                     row.external_count,
                     row.n_calls,
                     row.version,
-                    tracker_dirty=False,
                     blind=row.blind,
                 )
                 self.store.append_event(
@@ -248,6 +247,8 @@ class Gateway:
         return s
 
     def _persist(self, s: Session, *, force_tracker: bool = False) -> None:
+        """Write the session's state. Tracker content is appended as journal entries (cost proportional to what was just
+        registered, not to the size of the session); entries leave the pending list only after the write succeeded."""
         s.version += 1
         row = SessionRow(
             s.id,
@@ -258,11 +259,12 @@ class Gateway:
             s.n_calls,
             s.version,
             s.blind,
-            b"",
+            s.tracker.params(),
         )
-        if s.tracker_dirty or force_tracker:
-            self.store.save_session(SessionRow(**{**row.__dict__, "tracker": s.tracker.dump()}))
-            s.tracker_dirty = False
+        pending = s.tracker.pending()
+        if pending or force_tracker:
+            self.store.save_session(row, pending)
+            s.tracker.confirm(len(pending))
         else:
             self.store.update_session_state(row)
 
@@ -395,7 +397,6 @@ class Gateway:
             registered = idx is not None
             if not label.is_bottom and text and (idx is None or session.tracker.sources[idx].truncated):
                 session.blind = True  # too large (or too many) to follow: from now on the value tier cannot vouch
-            session.tracker_dirty |= registered
             session.ctx = session.ctx.join(label)  # in memory first: a persistence failure must only ever over-restrict
             try:
                 self._persist(session)
