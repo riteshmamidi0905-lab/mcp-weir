@@ -38,6 +38,19 @@ def paint(s: str, c: str, tty: bool) -> str:
     return f"{c}{s}{OFF}" if tty else s
 
 
+def write_source(db: Path, source: str, scn: Scenario, agent: str, sid: str, arm: str) -> None:
+    """Mark a database this script made as non-live, in the file the dashboard reads (<db>.weir-source.json)."""
+    body = {
+        "format": 1,
+        "source": source,
+        "written_by": "weir_eval.demo",
+        "scenario": scn.id,
+        "agent": agent,
+        "sessions": {sid: {"arm": arm}},
+    }
+    db.with_name(db.name + ".weir-source.json").write_text(json.dumps(body, indent=1, sort_keys=True) + "\n")
+
+
 def mask(text: str, scn: Scenario) -> str:
     c = scn.attack.canary if scn.attack else ""
     return text.replace(c, c[:4] + "…" + "*" * 6) if c else text
@@ -113,6 +126,19 @@ async def main_async(a: argparse.Namespace) -> int:
         db.unlink(missing_ok=True)
         trace, world, sid = await one_arm(scn, arm, mode, agent, db if arm != "A0" else None)
         results[key] = {"model_replies": trace.raw, "final": trace.final}
+        if sid:
+            write_source(
+                db,
+                "recorded-replay" if recording else "synthetic-demo",
+                scn,
+                "recorded model replies"
+                if recording
+                else "local model, run live"
+                if a.live
+                else "scripted obedient agent",
+                sid,
+                title,
+            )
         won = show(title, trace, world, scn, tty)
         if sid:
             store = Store(str(db))

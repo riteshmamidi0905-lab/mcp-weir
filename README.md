@@ -37,6 +37,10 @@ C. Behind Weir, and a human who approves everything
 
 Weir then writes a self-contained [flow trace](docs/assets/trace-careless.html) from its audit chain, showing each call, the label it carried, and the earlier result a flagged value came from. More: [`docs/demo.md`](docs/demo.md).
 
+### Control Center (optional, local)
+
+`weir-dashboard --db weir.db` serves a read-only browser view of a Weir database on `127.0.0.1`: sessions, each call's decision and rules, recorded data-flow relationships, pending approvals, the audit chain and the policy. It is a separate package that is not part of the gateway and not part of the frozen evaluation, reports nothing the gateway did not record, and shows no benchmark number. The one thing it can change is APPROVE or DENY on a held call, through the same store function as `weir approvals`. What it reads, what it can change, its approval findings and its limits (no login: any local process can use it) are in [`docs/dashboard.md`](docs/dashboard.md).
+
 ## How it works
 
 ```
@@ -110,6 +114,7 @@ python -m weir_eval.demo           # the 60-second demo, no model needed
 |---|---|
 | `src/mcp_weir/` | the gateway: labels, destinations, tracker, policy, rule engine, store, pinning, upstream clients, stdio server, CLI, flow-trace report |
 | `src/weir_testbed/` | the synthetic world (mail, files, web, notes) as in-process adapters, a hand-written stdio MCP server with fault injection, and SDK-built servers |
+| `src/weir_dashboard/` | the optional local Control Center (standard library only; imports `mcp_weir`, imported by nothing the evaluation froze) |
 | `src/weir_eval/` | scenario generator, oracles, scripted and local-model agents, runner, analysis, freeze tooling, benchmark, equivalence check, adaptive attacks, demo |
 | `eval/` | the frozen protocol, the freeze history, the held-out results, the tables |
 | `tests/` | unit and property tests, stdio end-to-end with fault injection, SDK interoperability, red-team robustness, evaluation-harness tests, claim-drift test |

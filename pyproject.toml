@@ -19,9 +19,13 @@ dev = ["ruff>=0.6", "mypy>=1.10"]
 
 [project.scripts]
 weir = "mcp_weir.cli:main"
+weir-dashboard = "weir_dashboard.cli:main"   # separate command: `weir` lives in a file the evaluation froze
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+weir_dashboard = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

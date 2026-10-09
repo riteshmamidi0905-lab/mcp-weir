@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="weir-token" content="__TOKEN__">
+<meta name="weir-mask-default" content="__MASK_DEFAULT__">
+<title>Weir Control Center</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="app">
+  <aside class="rail" aria-label="Weir Control Center">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5l4.2 15L13 8l5.8 12L23 5"/></svg>
+      <div><span class="word">WEIR</span><span class="sub">Control Center</span></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Primary"></nav>
+    <div class="rail-foot" id="railfoot"></div>
+  </aside>
+  <div class="col">
+    <header class="top">
+      <div class="brand-sm" aria-hidden="true">WEIR</div>
+      <div class="crumbs"><h1 id="title">Overview</h1></div>
+      <div class="tools">
+        <span class="poll" id="poll" role="status"><i></i><span>polling</span></span>
+        <button type="button" class="iconbtn" id="mask" aria-pressed="false" aria-label="Mask destinations and clear arguments on screen" title="Hide destinations and clear arguments on screen">Mask</button>
+        <button type="button" class="iconbtn" id="theme" aria-label="Switch colour theme" title="Switch colour theme">Theme</button>
+        <button type="button" class="iconbtn" id="info" aria-label="What Weir does not see" title="What Weir does not see">i</button>
+      </div>
+    </header>
+    <main id="main" tabindex="-1" aria-live="off"></main>
+    <footer class="boundary"><span id="boundary-text">__ANSWER_NOTE__</span><button type="button" id="boundary-more">What this means</button></footer>
+  </div>
+</div>
+<div id="announce" class="sr-only" aria-live="polite"></div>
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+  <div class="sheet-h"><h2 id="sheet-title"></h2><button type="button" class="iconbtn" id="sheet-close" aria-label="Close">Close</button></div>
+  <div class="sheet-b" id="sheet-body"></div>
+</dialog>
+<noscript><p class="noscript">The Weir Control Center needs JavaScript. It makes no requests except to this local server.</p></noscript>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>
