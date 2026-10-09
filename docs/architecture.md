@@ -122,7 +122,7 @@ The only things that cross from the model's side to the servers are calls that t
 | Tier | Rules | Strength | Weakness |
 |---|---|---|---|
 | **Value** | `R-DEST-UNTRUSTED`, `R-FLOW-CONF` | cheap in utility: only calls whose arguments visibly contain labelled data are touched | heuristic: a transformed value (paraphrase, translation, small pieces) is invisible |
-| **Session** | `R-TRIFECTA`, `R-UNTRUSTED-READ`, `R-EGRESS-BUDGET` | sound against a black-box model: needs no knowledge of what the model did with what it saw | expensive in utility: any session that mixed untrusted input and secrets is restricted, whether or not anything was misused |
+| **Session** | `R-TRIFECTA`, `R-UNTRUSTED-READ`, `R-EGRESS-BUDGET` | does not need to know what the model did with what it saw, so it does not depend on predicting the model (it still depends on the labels being right) | expensive in utility: any session that mixed untrusted input and secrets is restricted, whether or not anything was misused |
 
 The evaluation exists to measure exactly this trade-off.
 

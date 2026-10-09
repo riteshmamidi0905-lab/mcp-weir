@@ -1421,6 +1421,138 @@
     "benign_tasks_needing_approval": 10
    }
   },
+  "f1_variants": {
+   "b64": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "chunk12": {
+    "A2/careless": [
+     15,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "chunk5": {
+    "A2/careless": [
+     60,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "glyph": {
+    "A2/careless": [
+     51,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "hex": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "lookalike_hyphen": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "lookalike_suffix": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "rev": {
+    "A2/careless": [
+     60,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "rot13": {
+    "A2/careless": [
+     60,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "sep": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "spell": {
+    "A2/careless": [
+     42,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "value": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   },
+   "whole": {
+    "A2/careless": [
+     0,
+     60
+    ],
+    "A3/strict": [
+     0,
+     60
+    ]
+   }
+  },
   "f4_secret_first": {
    "A0/none": [
     120,
@@ -1487,6 +1619,17 @@
     120
    ]
   },
+  "first_stop": {
+   "cell": "A3/strict",
+   "counts": {
+    "R-DEST-UNTRUSTED": 480,
+    "R-FLOW-CONF": 230,
+    "R-TRIFECTA": 40,
+    "R-UNTRUSTED-READ": 780,
+    "none": 120
+   },
+   "n": 1650
+  },
   "rug_pull": {
    "A0": [
     10,
@@ -1518,8 +1661,8 @@
  "tests": {
   "date": "2026-10-09",
   "failed": 0,
-  "passed": 337,
+  "passed": 338,
   "python": "3.12.15",
-  "summary": "337 passed in 21.25s"
+  "summary": "338 passed in 20.22s"
  }
 }

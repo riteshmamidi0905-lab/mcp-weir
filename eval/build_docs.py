@@ -221,6 +221,9 @@ def build(template: str = "eval/templates/evaluation.md") -> str:
             return scorecard(h, recs, rm)
         if spec == "REALMODEL":
             return realmodel_section(h, rm)
+        if spec.startswith("pct:"):  # {{pct:numerator.path|denominator.path}} -> "47.3%"
+            num, den = spec[4:].replace("\\|", "|").split("|")
+            return f"{100 * float(dig(h, num)) / float(dig(h, den)):.1f}%"
         if spec.startswith("us:"):
             v = float(dig(h, spec[3:]))
             return f"{v:.0f} µs" if v < 1000 else f"{v / 1000:.2f} ms"

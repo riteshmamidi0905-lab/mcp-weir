@@ -80,6 +80,35 @@ def main() -> None:
                     sum(bool(r["attack_success"]) for r in sel),
                     len(sel),
                 ]
+        # which rule stopped the first attack call (A3, careful human); "none" = nothing was stopped (the answer channel)
+        a3 = [
+            r
+            for r in recs
+            if r["kind"] == "attack" and r["family"] != "F8" and r["arm"] == "A3" and r["mode"] == "strict"
+        ]
+        counts: dict[str, int] = {}
+        for r in a3:
+            key = (r.get("stopped_by") or ["none"])[0]
+            counts[key] = counts.get(key, 0) + 1
+        out["scripted"]["first_stop"] = {"cell": "A3/strict", "n": len(a3), "counts": dict(sorted(counts.items()))}
+        # e-mail exfiltration by how the value was transformed: value tier alone / defaults with a careful human
+        out["scripted"]["f1_variants"] = {}
+        for variant in sorted({r["variant"] for r in recs if r["kind"] == "attack" and r["family"] == "F1"}):
+            out["scripted"]["f1_variants"][variant] = {}
+            for arm, mode in (("A2", "careless"), ("A3", "strict")):
+                sel = [
+                    r
+                    for r in recs
+                    if r["kind"] == "attack"
+                    and r["family"] == "F1"
+                    and r["variant"] == variant
+                    and r["arm"] == arm
+                    and r["mode"] == mode
+                ]
+                out["scripted"]["f1_variants"][variant][f"{arm}/{mode}"] = [
+                    sum(bool(r["attack_success"]) for r in sel),
+                    len(sel),
+                ]
     m = first("test-realmodel/runs.jsonl.gz", "test-realmodel/runs.jsonl")
     if m:
         recs = read(m)

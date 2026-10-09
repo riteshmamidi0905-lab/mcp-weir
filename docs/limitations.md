@@ -8,6 +8,8 @@ Stated together, repeated wherever the project is described, and ordered by how 
 2. **It cannot see the model's final answer.** If the model has legitimately been shown a secret and then reads an injected instruction, it can repeat the secret in its reply. That attack reached its goal in **100%** of its runs under every arm (family F4, `secret_first`). The only enforceable control is on the *read* that puts the secret in context, and it does not apply when the user asked for that read. A host that renders model-chosen markdown images or links can leak data that Weir never sees.
 3. **It does not see the user's prompt or the model's reasoning.** A recipient the user typed and a recipient an attacker typed look the same unless the attacker's text contains it.
 4. **Covert channels are out of scope**: which tool is called, how many calls, timing, error behaviour.
+4a. **It is not a formal information-flow-control system.** The labels are coarse (three confidentiality levels, two integrity levels), declared by an operator and only as good as that declaration; the content tracker is a heuristic; nothing is proved and there is no non-interference guarantee. "Information-flow" names the design vocabulary, not a verified property.
+4b. **"First rule to stop the attack" is an accounting convention, not a ranking of importance.** The read happens before the send, so a rule that fires on the read is credited before one that would have fired on the send; and the session rules ask a human by default, so with a human who approves everything they stop nothing on their own (A3s, 100% of attacks) while the tracker's deny rules still stop a share (A2, 44.7%). See `docs/evaluation.md` section 3.
 
 ## The value tier is a heuristic (measured)
 
