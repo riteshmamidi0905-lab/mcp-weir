@@ -7,6 +7,7 @@ import json
 import os
 import queue
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -72,6 +73,7 @@ class Gateway:
             text=True,
             bufsize=1,
             env={**os.environ, "WEIR_LOG": "WARNING"},
+            start_new_session=True,  # own process group, so close() can reap upstreams that outlive a killed gateway
         )
         self.lines: queue.Queue[str] = queue.Queue()
         self.err: list[str] = []
@@ -135,3 +137,7 @@ class Gateway:
         except subprocess.TimeoutExpired:
             self.proc.kill()
             return self.proc.wait()
+        finally:
+            # a fault-injected upstream (WEIR_FAULT=hang) ignores EOF by design: never leave one behind
+            with contextlib.suppress(OSError):
+                os.killpg(self.proc.pid, signal.SIGKILL)
