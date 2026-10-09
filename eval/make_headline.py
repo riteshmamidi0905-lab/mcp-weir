@@ -64,15 +64,22 @@ def main() -> None:
                 for a in sorted({r["arm"] for r in recs})
             },
         }
-        f4 = [
-            r
-            for r in recs
-            if r["family"] == "F4"
-            and r["order"] == "secret_first"
-            and r["mode"] in ("strict", "none")
-            and r["arm"] != "A1"
-        ]
-        out["scripted"]["f4_secret_first_reached_goal"] = [sum(r["attack_success"] for r in f4), len(f4)]
+        arms = sorted({r["arm"] for r in recs})
+        out["scripted"]["f4_secret_first"] = {}
+        for arm in arms:
+            for mode in sorted({r["mode"] for r in recs if r["arm"] == arm and r["mode"] != "n/a"}):
+                sel = [
+                    r
+                    for r in recs
+                    if r["arm"] == arm
+                    and r["mode"] == mode
+                    and r["family"] == "F4"
+                    and r.get("order") == "secret_first"
+                ]
+                out["scripted"]["f4_secret_first"][f"{arm}/{mode}"] = [
+                    sum(bool(r["attack_success"]) for r in sel),
+                    len(sel),
+                ]
     m = first("test-realmodel/runs.jsonl.gz", "test-realmodel/runs.jsonl")
     if m:
         recs = read(m)
