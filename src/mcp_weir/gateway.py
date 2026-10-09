@@ -388,7 +388,12 @@ class Gateway:
             call_hash,
             name,
             decision.codes,
-            {"tool": name, "targets": self._targets(spec, args), "rules": [h.message for h in decision.hits]},
+            {
+                "tool": name,
+                "args": self._view_args(spec, args),
+                "rules": [h.message for h in decision.hits],
+                "flows": [_match_dict(m) for h in decision.hits for m in h.matches][:8],
+            },
             self.policy.approval_ttl_seconds,
         )
         self.store.append_event(
@@ -453,10 +458,18 @@ class Gateway:
         )
 
     @staticmethod
-    def _targets(spec: ToolSpec | None, args: dict[str, Any]) -> dict[str, str]:
-        if spec is None:
-            return {}
-        return {a: str(args[a])[:200] for a, _ in spec.targets if a in args}
+    def _view_args(spec: ToolSpec | None, args: dict[str, Any]) -> dict[str, Any]:
+        """What a human or a log may see: every argument the policy does not declare as *content* in clear (truncated),
+        content arguments only as length and digest. Unknown tools get digests only."""
+        content = set(spec.content) if spec else None
+        out: dict[str, Any] = {}
+        for k, v in args.items():
+            flat = v if isinstance(v, str) else canonical(v)
+            if content is not None and k not in content:
+                out[k] = flat[:200]
+            else:
+                out[k] = {"len": len(flat), "sha256": hashlib.sha256(flat.encode()).hexdigest()[:16]}
+        return out
 
     def _decision_payload(
         self,
@@ -469,15 +482,6 @@ class Gateway:
         ctx: Label,
         approval: str | None,
     ) -> dict[str, Any]:
-        redacted: dict[str, Any] = {}
-        targets = {a for a, _ in spec.targets} if spec else set()
-        for k, v in args.items():
-            flat = v if isinstance(v, str) else canonical(v)
-            redacted[k] = (
-                flat[:200]
-                if k in targets
-                else {"len": len(flat), "sha256": hashlib.sha256(flat.encode()).hexdigest()[:16]}
-            )
         return {
             "call": call_id,
             "call_hash": call_hash[:16],
@@ -487,7 +491,7 @@ class Gateway:
             "external": d.external,
             "result_label": str(d.result_label),
             "ctx_before": str(ctx),
-            "args": redacted,
+            "args": self._view_args(spec, args),
             "approval": approval,
             "destinations": [{"kind": x.kind, "reason": x.reason} for x in d.destinations],
         }

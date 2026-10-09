@@ -375,3 +375,28 @@ def test_call_hash_is_stable():
     a = hashlib.sha256(canonical({"tool": "t", "args": {"b": 1, "a": 2}}).encode()).hexdigest()
     b = hashlib.sha256(canonical({"tool": "t", "args": {"a": 2, "b": 1}}).encode()).hexdigest()
     assert a == b and error_result("x")["isError"]
+
+
+def test_audit_shows_non_content_arguments_and_masks_content(gw, store):
+    async def go():
+        s = gw.open_session()
+        await call(gw, s, "files__read_file", {"path": "/secrets/payroll.txt"})
+        await call(gw, s, "files__write_file", {"path": "/docs/n.txt", "content": "private words here"})
+        return s
+
+    s = run(go())
+    pay = [e["payload"] for e in store.events(s.id) if e["kind"] == "call.decision"]
+    assert pay[0]["args"]["path"] == "/secrets/payroll.txt"  # a human reviewing a read must see what is read
+    assert set(pay[1]["args"]["content"]) == {"len", "sha256"} and pay[1]["args"]["path"] == "/docs/n.txt"
+
+
+def test_approval_summary_tells_the_approver_what_and_why(gw, store):
+    async def go():
+        s = gw.open_session()
+        await call(gw, s, "mail__read_message", {"id": "m1"})
+        return await call(gw, s, "mail__send_message", LEAK)
+
+    out = run(go())
+    ap = store.get_approval(out.approval_id)
+    assert ap.summary["args"]["to"] == "verify@evil.example" and set(ap.summary["args"]["body"]) == {"len", "sha256"}
+    assert ap.summary["flows"] and ap.summary["flows"][0]["call"] == "c1" and SECRET not in canonical(ap.summary)

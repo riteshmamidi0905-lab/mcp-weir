@@ -72,7 +72,7 @@ def status(r: CallRecord) -> str:
     return "ALLOWED"
 
 
-def _fmt_arg(v: Any) -> str:
+def fmt_arg(v: Any) -> str:
     if isinstance(v, str):
         return v
     return f"<{v.get('len')} chars, sha256 {v.get('sha256')}>"
@@ -91,7 +91,7 @@ def render_text(records: list[CallRecord]) -> str:
                     f"          from {s['call']} ({s['tool']}, {s['label']}) matched by {s['kind']}/{s['via']} x{s['hits']}"
                 )
         for a, v in r.args.items():
-            lines.append(f"        {a} = {_fmt_arg(v)}")
+            lines.append(f"        {a} = {fmt_arg(v)}")
     return "\n".join(lines)
 
 

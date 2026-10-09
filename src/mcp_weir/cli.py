@@ -14,7 +14,7 @@ from typing import Any
 from .gateway import Gateway
 from .pinning import definition_hash, load_lock, write_lock
 from .policy import PolicyError, load_policy
-from .report import build_records, render_html, render_text
+from .report import build_records, fmt_arg, render_html, render_text
 from .server import serve, stdio_io
 from .store import Store
 from .upstream import StdioUpstream, UpstreamError
@@ -113,10 +113,12 @@ def cmd_approvals(a: argparse.Namespace) -> int:
         return 1
     if a.action == "show":
         print(f"id {ap.id}\nstate {ap.state}\ntool {ap.tool}\nsession {ap.session_id}\nrules {', '.join(ap.rules)}")
-        for k, v in ap.summary.get("targets", {}).items():
-            print(f"target {k} = {v}")
+        for k, v in ap.summary.get("args", {}).items():
+            print(f"arg {k} = {fmt_arg(v)}")
         for m in ap.summary.get("rules", []):
             print(f"because {m}")
+        for f in ap.summary.get("flows", []):
+            print(f"  value from {f['call']} ({f['tool']}, {f['label']}) matched by {f['kind']}/{f['via']}")
         return 0
     outcome = store.resolve_approval(a.id, a.action == "approve", by=os.environ.get("USER", "cli"))
     print(f"{a.id}: {outcome}")

@@ -34,7 +34,16 @@ class Action(StrEnum):
     DENY = "deny"
 
 
-RULE_NAMES = ("dest_untrusted", "flow_conf_secret", "flow_conf_internal", "trifecta", "untrusted_read", "egress_budget")
+RULE_NAMES = (
+    "dest_untrusted",
+    "flow_conf_secret",
+    "flow_conf_internal",
+    "trifecta",
+    "untrusted_read",
+    "egress_budget",
+    "gate_egress",
+    "gate_write",
+)
 TARGET_KINDS = ("email", "url", "path", "other")
 _NAME = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 
@@ -97,6 +106,8 @@ class RuleConfig:
     trifecta: Action = Action.APPROVE
     untrusted_read: Action = Action.APPROVE
     egress_budget: Action = Action.APPROVE
+    gate_egress: Action = Action.OFF  # static, argument-blind approval gate on every egress call (the baseline arm)
+    gate_write: Action = Action.OFF  # same, for write calls
     egress_budget_limit: int = 3
 
 

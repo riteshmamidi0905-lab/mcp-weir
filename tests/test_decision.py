@@ -172,3 +172,19 @@ def test_decisions_are_deterministic(policy):
     args = {"to": "jo@partner.example", "subject": "s", "body": KEYTEXT}
     a, b = ev(policy, "mail__send_message", args, tracker=t), ev(policy, "mail__send_message", args, tracker=t)
     assert a.codes == b.codes and a.verdict == b.verdict
+
+
+def test_static_gate_is_off_by_default_and_gates_every_egress_and_write_when_on(policy):
+    send_int = {"to": "lee@corp.example", **SEND}
+    assert ev(policy, "mail__send_message", send_int).verdict is Verdict.ALLOW
+    gated = policy.with_rules(gate_egress="approve", gate_write="approve")
+    assert ev(gated, "mail__send_message", send_int).codes == ["R-GATE"]  # even an internal send
+    assert ev(gated, "files__write_file", {"path": "/docs/a.txt", "content": "x"}).codes == ["R-GATE"]
+    assert ev(gated, "files__read_file", {"path": "/docs/q3.txt"}).verdict is Verdict.ALLOW  # reads are not gated
+    assert ev(gated, "mail__list_messages", {}).verdict is Verdict.ALLOW
+
+
+def test_shared_paths_are_untrusted(policy):
+    spec = policy.tool("files__read_file")
+    lab = spec.result_label_for({"path": "/shared/partner_notes.txt"})
+    assert lab.integ is Integ.UNTRUSTED and lab.conf is Conf.INTERNAL

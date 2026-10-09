@@ -22,6 +22,8 @@ trifecta          = "approve"   # external egress after the session saw secret A
 untrusted_read    = "approve"   # a secret read after the session saw untrusted data
 egress_budget     = "approve"
 egress_budget_limit = 3
+gate_egress       = "off"       # static gate on every egress call: the permissions-only baseline arm turns this on
+gate_write        = "off"
 
 [upstreams.mail]
 command = ["$PYTHON", "-m", "weir_testbed.servers", "mail"]
@@ -57,11 +59,13 @@ result = { conf = "internal", integ = "trusted" }
 result_rules = [
   { arg = "path", glob = "/secrets/*", conf = "secret" },
   { arg = "path", glob = "/public/*", conf = "public" },
+  { arg = "path", glob = "/shared/*", integ = "untrusted" },   # files that outside parties can write
 ]
 
 [tools.files__write_file]
 effect = "write"
 target = { path = "path" }
+content = ["content"]
 
 [tools.files__delete_file]
 effect = "write"
@@ -83,3 +87,4 @@ content = ["title", "body"]
 [tools.notes__save_note]
 effect = "write"
 target = { title = "other" }
+content = ["body"]

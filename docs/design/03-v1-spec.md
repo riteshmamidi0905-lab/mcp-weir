@@ -116,4 +116,7 @@ A synthetic mailbox contains a vendor invoice whose body hides an instruction. T
 Not a complete defence; value tracking is a heuristic and is expected to lose to a determined paraphrase; session rules trade utility for soundness; Weir cannot see the final answer, so G3 is only addressed at the read; the label policy is written by the operator and a wrong label is a bypass; synthetic world, one author, one small model; stdio only, tools only; never deployed, no users, no external validation.
 
 ## Spec changes
-*(none yet)*
+
+* **2026-10-08 (before any evaluation run): rule `R-GATE` added, default off.** Arm A1 ("permissions only") must be a real, comparable baseline: a static, argument-blind approval gate on every `egress` (and optionally every `write`) call, which is what per-tool approval gates in the author's earlier projects do. It was missing from §5. Default behaviour of every other arm is unchanged. Policy keys: `rules.gate_egress`, `rules.gate_write`.
+* **2026-10-08 (before any evaluation run): approvals and the audit trail show every argument the policy does not declare as *content* in clear (truncated to 200 characters), content arguments only as length and digest.** §7 said approvals contain no labelled data; this keeps that true while letting a human see *what is being read or written*. The matched sources of a flow are listed, never the matched text. Policy authors must declare content arguments (including `write_file.content`); an undeclared sensitive argument would be logged in clear.
+* **2026-10-08 (before any evaluation run): `/shared/*` paths are labelled `untrusted` in the example policy** (files outside parties can write), so a file can be an injection vector as well as mail and web pages.

@@ -77,6 +77,23 @@ def evaluate(
         external = False
     result_label = spec.result_label_for(args)
 
+    # ---- static gate (off by default; the permissions-only baseline) ------------------------------------
+    gate_rule, gate_default = (
+        ("gate_egress", rules.gate_egress)
+        if spec.effect is Effect.EGRESS
+        else ("gate_write", rules.gate_write)
+        if spec.effect is Effect.WRITE
+        else ("", Action.OFF)
+    )
+    if gate_rule and spec.action(gate_rule, gate_default) is not Action.OFF:
+        hits.append(
+            RuleHit(
+                "R-GATE",
+                _v(spec.action(gate_rule, gate_default)),
+                f"every {spec.effect.value} call needs approval (static gate)",
+            )
+        )
+
     # ---- value tier -----------------------------------------------------------------------------------
     act = spec.action("dest_untrusted", rules.dest_untrusted)
     if act is not Action.OFF and dests and (spec.effect is Effect.WRITE or external):

