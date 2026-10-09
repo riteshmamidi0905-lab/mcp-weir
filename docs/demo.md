@@ -26,7 +26,7 @@ python -m weir_eval.demo --live --scenario F1:value:untrusted_first:web:1 --reco
 python -m weir_eval.demo --replay demo/recorded/f1-web.json     # replays the recorded model replies through the LIVE gateway, no model needed
 ```
 
-The scenario is a *development* scenario (seed 1), not a held-out one. In the recorded session the model follows the planted instruction without a gateway; behind Weir the same model's calls are held or blocked as above. `--replay` re-runs the gateway on the recorded model output, so the decisions are recomputed, not recorded; if a tool result no longer matches the recording the replay says so.
+A recording of exactly this session is committed (`demo/recorded/f1-web.json`) and `tests/test_demo.py` replays it on every test run. The scenario is a *development* scenario (seed 1), not a held-out one. In the recorded session the model follows the planted instruction without a gateway; behind Weir the same model's calls are held or blocked as above. `--replay` re-runs the gateway on the recorded model output, so the decisions are recomputed, not recorded; if a tool result no longer matches the recording the replay says so.
 
 ## 3 · Over the real protocol, in front of a real server
 

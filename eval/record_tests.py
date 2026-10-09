@@ -1,4 +1,11 @@
-"""Records the test-suite result (run at release time, not in CI): python eval/record_tests.py > eval/results/tests.json"""
+"""Records the test-suite result (run at release time, not in CI).
+
+Write to a temporary file, not straight to eval/results/tests.json (a half-written file there breaks the drift tests):
+
+    python eval/record_tests.py > /tmp/tests.json && mv /tmp/tests.json eval/results/tests.json
+
+pyproject.toml already adds -q, so this script must not.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 r = subprocess.run(
-    [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"], capture_output=True, text=True, cwd=ROOT
+    [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tests"], capture_output=True, text=True, cwd=ROOT
 )
 tail = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ""
 passed = int(m.group(1)) if (m := re.search(r"(\d+) passed", tail)) else 0

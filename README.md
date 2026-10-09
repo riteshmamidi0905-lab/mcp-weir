@@ -4,7 +4,7 @@
 
 **Weir is an information-flow gateway for MCP tool calls.** It sits between an AI agent host and the MCP servers the agent uses, labels what each tool returns, remembers what the agent has been shown, and decides call by call whether data may go where the agent is trying to send it. A weir regulates a flow without stopping the river.
 
-> **Read this first.** This is a research prototype and a same-author evaluation. The world is **synthetic** (an invented mailbox, files, web pages and notes), the tools are toys, the model is **one small local model** (Qwen3-4B-Instruct-2507, Q4_K_M) on one machine, and one AI-assisted author wrote the gateway, the testbed, the scenarios and the oracles with no independent review. Weir is **not a complete defence**: its value tracker is a heuristic that loses to a determined paraphrase, the session rules trade usability for soundness, and it cannot see what the model says in its final answer. It has never been deployed and has no users. Every claim below is classified in [`docs/claims.md`](docs/claims.md) as verified, simulated, a limitation, or not evaluated.
+> **Read this first.** This is a research prototype and a same-author evaluation. The world is **synthetic** (an invented mailbox, files, web pages and notes), the tools are toys, the model is **one small local model** (Qwen3-4B-Instruct-2507, Q4_K_M) on one machine, and one AI-assisted author wrote the gateway, the testbed, the scenarios and the oracles with no independent review. Weir is **not a complete defence**: its value tracker is a heuristic that loses to a determined paraphrase, the session rules trade usability for soundness, and it cannot see what the model says in its final answer. It has never been deployed and has no users. The "secrets" are random strings generated per scenario (some are shaped like API keys; none is a credential). Every claim below is classified in [`docs/claims.md`](docs/claims.md) as verified, simulated, a limitation, or not evaluated.
 
 ## The problem
 
@@ -57,24 +57,46 @@ Architecture: [`docs/architecture.md`](docs/architecture.md). Frozen specificati
 
 Held-out run, **frozen before it ran** ([`eval/PROTOCOL.md`](eval/PROTOCOL.md), [`eval/FREEZE-HISTORY.md`](eval/FREEZE-HISTORY.md)): 1,650 scripted attacks and 160 benign tasks per cell, against a perfectly obedient attacker, six arms, three kinds of human. *Scripted* means the attacker follows the injection without fail; it is a worst case for being fooled and a weak case for adapting. Full tables, intervals and the model run: [`docs/evaluation.md`](docs/evaluation.md).
 
-@@HEADLINE@@
+<!-- gen:headline -->
+| Arm | careful human: attacks that reach their goal | careful human: approvals per benign task | careful human: benign tasks completed | human approves everything: attacks | nobody to approve: benign tasks completed |
+|---|---|---|---|---|---|
+| A0 no gateway | 100.0% (1650/1650) | 0.00 | 100.0% (160/160) | 100.0% (1650/1650) | 100.0% (160/160) |
+| A1 static approval gates | 14.5% (240/1650) | 1.06 | 100.0% (160/160) | 100.0% (1650/1650) | 6.2% (10/160) |
+| A2 value tier | 19.4% (320/1650) | 0.12 | 100.0% (160/160) | 44.7% (738/1650) | 87.5% (140/160) |
+| A3s session tier only | 12.7% (210/1650) | 0.06 | 100.0% (160/160) | 100.0% (1650/1650) | 93.8% (150/160) |
+| A3 value + session tiers | 7.3% (120/1650) | 0.19 | 100.0% (160/160) | 44.7% (738/1650) | 81.2% (130/160) |
+| A3d value + session tiers, session rules deny | 7.3% (120/1650) | 0.12 | 93.8% (150/160) | 12.7% (210/1650) | 81.2% (130/160) |
+<!-- /gen:headline -->
 
 What that says, and what it does not:
 
-* **Static approval gates are theatre if the human clicks yes** (A1: 100% of attacks succeed), and they ask for approval on 1.06 steps of every benign task. Flow-aware rules ask on 0.19, and the non-waivable ones (A3d) leave 12.7% of attacks standing even when the human approves everything.
+* **Static approval gates stop nothing if the human clicks yes** (A1: 100% of attacks succeed), and they ask for 1.06 approvals per benign task (150 of 160 tasks need at least one). Weir's defaults ask for 0.19 (30 of 160 tasks), and its non-waivable rules (A3d) leave 12.7% of attacks standing even when the human approves everything.
 * **The boring rule did most of the work.** "No secret read after the session has seen untrusted content" (`R-UNTRUSTED-READ`) was the first thing to stop the attack in 47% of runs. The clever part, the value tracker, is a heuristic: it reads `rot13`, reversed text, 5-character pieces, Cyrillic look-alikes and base64 wrapped in short lines as nothing.
 * **One residual no gateway at this boundary can remove:** a model that was *legitimately* given a secret earlier and then reads an injected instruction can simply repeat the secret in its answer. Weir never sees the answer. That attack succeeded in 100% of its runs under every arm (`F4`, `secret_first`), which is why the spec's own "≤ 5%" criterion was missed (7.3%) and is reported as missed.
 * **The red-team found gaps the evaluation did not** ([`docs/red-team.md`](docs/red-team.md)): data hidden in the *recipient* address (`R-FLOW-CONF` reads only declared content arguments), state changes that never name their target, and an approval screen that cannot tell the user's e-mail from the attacker's (the body is a digest). They are documented, not fixed, because the evaluation was frozen.
 * **My own tooling failed before the evaluation did**, and that is part of the evidence: an approval screen that hid a fetched URL made my "careful human" oracle approve an exfiltration; a leading `//` bypassed a path rule; the whole tracker was re-serialised on every call (p99 741 ms at 10,000 results, now 0.74 ms); one deeply nested JSON message could kill the server.
 
-@@REALMODEL@@
+**The same attack with a real small model in the loop** (Qwen3-4B-Instruct-2507, held-out scenarios, one pass; [details and limits](docs/evaluation.md)): with no gateway the model reached the attacker's goal in 62% of runs, and what each arm let through is below. A model that does not follow the injection is not a defence, which is why the unprotected row is the baseline.
+
+<!-- gen:realmodel -->
+| Qwen3-4B-Instruct-2507, one pass | attacks that reached their goal |
+|---|---|
+| no gateway | 41/66 = 62.1% [50.1, 72.9] |
+| static approval gates, careful human | 6/66 = 9.1% [4.2, 18.4] |
+| value tier, careful human | 6/66 = 9.1% [4.2, 18.4] |
+| Weir defaults, careful human | 6/66 = 9.1% [4.2, 18.4] |
+| Weir defaults, human approves everything | 18/66 = 27.3% [18.0, 39.0] |
+| session rules deny, human approves everything | 18/66 = 27.3% [18.0, 39.0] |
+<!-- /gen:realmodel -->
+
+What that says, and what it does not: the 62% is almost entirely injections delivered in a web page or a shared file (86% each); in a mail it was 14%, because the model often answered from the message list without opening the poisoned message. **The static gates, the value tier and the defaults are indistinguishable in this run** (all 9.1%, all of it the answer channel), because these scenarios ask for the secret verbatim and the model never disguised it; the scripted run, not this one, is the evidence about transformations and about the session rules. With a human who approves everything, 27% got through: the answer channel plus the three attacks that carry no secret (message the attacker, delete, overwrite), which the defaults turn into approval prompts that a careless human grants. And the same model fails 23% of the benign tasks with no gateway at all, so benign completion under Weir has to be read against that baseline.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/riteshmamidi0905-lab/mcp-weir.git && cd mcp-weir
 python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[test,interop,dev]'
-pytest -q                          # 300+ tests: unit, property, stdio end-to-end, official-SDK interop, harness, red-team
+pytest -q                          # <!-- gen-inline:testcount -->337<!-- /gen-inline:testcount --> tests: unit, property, stdio end-to-end, official-SDK interop, harness, red-team, documentation drift
 python -m weir_eval.demo           # the 60-second demo, no model needed
 ```
 

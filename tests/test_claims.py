@@ -93,6 +93,29 @@ def test_readme_numbers_come_from_the_recorded_results():
     )
 
 
+def test_readme_realmodel_prose_numbers_come_from_the_records():
+    """The sentence under the real-model table quotes 62%, 86%, 14%, 27% and 23%: check each against the records."""
+    recs = records("test-realmodel/runs.jsonl")
+    atk = [r for r in recs if r["kind"] == "attack"]
+
+    def rate(arm, mode, **kw):
+        sel = [r for r in atk if r["arm"] == arm and r["mode"] == mode and all(r.get(k) == v for k, v in kw.items())]
+        return round(100 * sum(bool(r["attack_success"]) for r in sel) / len(sel))
+
+    assert rate("A0", "none") == 62
+    assert rate("A0", "none", delivery="web") == 86 and rate("A0", "none", delivery="file") == 86
+    assert rate("A0", "none", delivery="mail") == 14
+    assert rate("A3", "careless") == 27
+    assert rate("A1", "strict") == rate("A2", "strict") == rate("A3", "strict") == 9, (
+        "README says the three arms are indistinguishable"
+    )
+    assert all(r["family"] == "F4" for r in atk if r["arm"] == "A3" and r["mode"] == "strict" and r["attack_success"])
+    ben = [r for r in recs if r["kind"] == "benign" and r["arm"] == "A0" and r["mode"] == "none"]
+    assert round(100 * sum(not r["benign_ok"] for r in ben) / len(ben)) == 23
+    for frag in ("62%", "86% each", "14%", "27%", "23%", "indistinguishable"):
+        assert frag in README, frag
+
+
 def test_the_spec_criterion_that_was_missed_is_reported_as_missed():
     ev = (ROOT / "docs" / "evaluation.md").read_text()
     assert "**Missed, as predicted.**" in ev and "was **missed: 7.3%**" in ev
