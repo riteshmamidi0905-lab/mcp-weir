@@ -1,0 +1,6 @@
+tools through Weir: ['fetch__fetch', 'files__read_file']
+1. benign fetch of a real page   -> ok | Contents of https://example.com/: <p>Example Domain</p>  Thi
+2. read a secret after that page -> weir: approval required for files__read_file (rules: R-UNTRUSTED-READ). Approval id: ap_93fb7ec3. A 
+3. (fresh session) read the secret first, as the user asked -> API_TOKEN=tk_l...
+4. then fetch a URL carrying it  -> weir: blocked fetch__fetch: R-FLOW-CONF. secret data would leave the trust boundary.
+PASS

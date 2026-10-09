@@ -1,0 +1,25 @@
+# Weir in front of a THIRD-PARTY MCP server: `mcp-server-fetch` (pip install mcp-server-fetch), built by the MCP project on
+# a different SDK major version than the one the tests use, plus one synthetic local server that holds a pretend secret.
+# Replace FETCH_BIN with the path of the installed `mcp-server-fetch` console script. Needs network access.
+
+[policy]
+name = "thirdparty-fetch"
+internal_domains = ["corp.example"]
+
+[upstreams.files]
+command = ["$PYTHON", "-m", "weir_testbed.servers", "files"]
+
+[upstreams.fetch]
+command = ["FETCH_BIN"]
+
+[tools.files__read_file]
+effect = "read"
+result = { conf = "internal", integ = "trusted" }
+result_rules = [{ arg = "path", glob = "/secrets/*", conf = "secret" }]
+
+[tools.fetch__fetch]
+effect = "egress"                       # the request, and its URL, leave the boundary
+target = { url = "url" }
+content = ["url"]
+result = { conf = "public", integ = "untrusted" }   # a fetched page is attacker-controllable text
+rules = { dest_untrusted = "off" }      # following links is what a fetch tool is for; the flow rules still apply to the URL
