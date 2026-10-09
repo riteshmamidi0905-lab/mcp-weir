@@ -400,3 +400,86 @@ def test_approval_summary_tells_the_approver_what_and_why(gw, store):
     ap = store.get_approval(out.approval_id)
     assert ap.summary["args"]["to"] == "verify@evil.example" and set(ap.summary["args"]["body"]) == {"len", "sha256"}
     assert ap.summary["flows"] and ap.summary["flows"][0]["call"] == "c1" and SECRET not in canonical(ap.summary)
+
+
+def test_resume_is_refused_when_the_persisted_session_or_the_audit_chain_was_edited(policy, tmp_path):
+    path = str(tmp_path / "r.db")
+    w = World.from_fixture(FIXTURE)
+    st = Store(path)
+    gw = make_gateway(policy, st, w)
+    run(gw.start())
+
+    async def phase1():
+        s = gw.open_session("sess")
+        await call(gw, s, "mail__read_message", {"id": "m1"})
+
+    run(phase1())
+    st.close()
+    con = sqlite3.connect(path)
+    con.execute("UPDATE sessions SET ctx_integ=0 WHERE id='sess'")  # pretend nothing untrusted was ever seen
+    con.commit()
+    con.close()
+    st2 = Store(path)
+    gw2 = make_gateway(policy, st2, World.from_fixture(FIXTURE))
+    with pytest.raises(RuntimeError, match="integrity"):
+        gw2.open_session("sess")
+    assert any(e["kind"] == "session.refused" for e in st2.events("sess"))
+
+
+def test_resume_is_refused_when_the_audit_chain_is_broken(policy, tmp_path):
+    path = str(tmp_path / "c.db")
+    st = Store(path)
+    gw = make_gateway(policy, st, World.from_fixture(FIXTURE))
+    run(gw.start())
+    run(call(gw, gw.open_session("sess"), "files__read_file", {"path": "/docs/q3.txt"}))
+    st.close()
+    con = sqlite3.connect(path)
+    con.execute("UPDATE events SET payload=replace(payload,'ALLOW','DENY') WHERE kind='call.decision'")
+    con.commit()
+    con.close()
+    gw2 = make_gateway(policy, Store(path), World.from_fixture(FIXTURE))
+    with pytest.raises(RuntimeError, match="audit chain is broken"):
+        gw2.open_session("sess")
+
+
+def test_a_result_too_large_to_track_makes_the_value_tier_blind_and_external_egress_needs_approval(policy, store):
+    big = (
+        "filler words about nothing in particular " * 3000 + "PAYROLL_API_KEY=sk_live_TAILTAILTAIL99"
+    )  # secret sits past the cap
+    fx = {**FIXTURE, "files": {**FIXTURE["files"], "/secrets/big.txt": big}}
+    w = World.from_fixture(fx)
+    gw = make_gateway(policy, store, w)
+    run(gw.start())
+
+    async def go():
+        s = gw.open_session()
+        small = await call(gw, s, "files__read_file", {"path": "/docs/q3.txt"})
+        ok = await call(
+            gw, s, "mail__send_message", {"to": "jo@partner.example", "subject": "s", "body": "hello there"}
+        )
+        await call(gw, s, "files__read_file", {"path": "/secrets/big.txt"})
+        leak = await call(
+            gw, s, "mail__send_message", {"to": "jo@partner.example", "subject": "s", "body": "sk_live_TAILTAILTAIL99"}
+        )
+        return s, small, ok, leak
+
+    s, _small, ok, leak = run(go())
+    assert s.tracker.sources[1].truncated is not False or s.blind  # the large secret was truncated by the tracker
+    assert s.blind and ok.forwarded  # blindness only started with the large result
+    assert (
+        leak.codes == ["R-TRACKER-LIMIT"] and not leak.forwarded
+    )  # the tail secret is invisible to grams, but the call is held
+    assert not [e for e in w.effects if e["op"] == "send" and "TAIL" in str(e.get("body"))]
+
+
+def test_blind_flag_survives_restart(policy, tmp_path):
+    path = str(tmp_path / "b.db")
+    fx = {**FIXTURE, "files": {**FIXTURE["files"], "/secrets/big.txt": "x" * 70000 + "SECRETTAIL"}}
+    st = Store(path)
+    gw = make_gateway(policy, st, World.from_fixture(fx))
+    run(gw.start())
+    run(call(gw, gw.open_session("sess"), "files__read_file", {"path": "/secrets/big.txt"}))
+    st.close()
+    gw2 = make_gateway(policy, Store(path), World.from_fixture(fx))
+    run(gw2.start())
+    assert gw2.open_session("sess").blind

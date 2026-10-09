@@ -23,7 +23,7 @@ from .labels import Conf, Integ, Label
 from .pinning import definition_hash
 from .policy import Policy, ToolSpec
 from .session import Session
-from .store import Approval, Store, canonical
+from .store import Approval, SessionRow, StateIntegrityError, Store, canonical
 from .tracker import Match, Tracker
 from .upstream import Upstream, UpstreamError
 
@@ -194,18 +194,33 @@ class Gateway:
     def open_session(self, sid: str | None = None) -> Session:
         cfg = self.policy.tracker
         if sid is not None:
-            row = self.store.load_session(sid)
+            try:
+                row = self.store.load_session(sid)
+            except StateIntegrityError as e:
+                self.store.append_event(sid, "session.refused", {"reason": "state integrity", "detail": str(e)[:200]})
+                raise RuntimeError(f"refusing to resume session {sid}: {e}") from None
             if row is not None:
-                policy_sha, conf, integ, ext, blob, version, n_calls = row
-                if policy_sha != self.policy.digest and not self.allow_policy_change:
+                ok, bad, _ = self.store.verify_chain()
+                if not ok:
+                    raise RuntimeError(f"refusing to resume session {sid}: the audit chain is broken at event #{bad}")
+                if row.policy_sha != self.policy.digest and not self.allow_policy_change:
                     raise RuntimeError(
-                        f"session {sid} was created under a different policy ({policy_sha[:12]} vs {self.policy.digest[:12]}); "
+                        f"session {sid} was created under a different policy ({row.policy_sha[:12]} vs {self.policy.digest[:12]}); "
                         "refusing to resume (allow_policy_change=True overrides)"
                     )
-                tracker = Tracker.load(self._key, blob) if blob else Tracker(self._key)
-                s = Session(sid, tracker, Label(Conf(conf), Integ(integ)), ext, n_calls, version, tracker_dirty=False)
+                tracker = Tracker.load(self._key, row.tracker) if row.tracker else Tracker(self._key)
+                s = Session(
+                    sid,
+                    tracker,
+                    Label(Conf(row.ctx_conf), Integ(row.ctx_integ)),
+                    row.external_count,
+                    row.n_calls,
+                    row.version,
+                    tracker_dirty=False,
+                    blind=row.blind,
+                )
                 self.store.append_event(
-                    sid, "session.resume", {"policy": self.policy.digest, "ctx": str(s.ctx), "version": version}
+                    sid, "session.resume", {"policy": self.policy.digest, "ctx": str(s.ctx), "version": row.version}
                 )
                 return s
         sid = sid or "s_" + secrets.token_hex(6)
@@ -225,22 +240,22 @@ class Gateway:
 
     def _persist(self, s: Session, *, force_tracker: bool = False) -> None:
         s.version += 1
+        row = SessionRow(
+            s.id,
+            self.policy.digest,
+            int(s.ctx.conf),
+            int(s.ctx.integ),
+            s.external_count,
+            s.n_calls,
+            s.version,
+            s.blind,
+            b"",
+        )
         if s.tracker_dirty or force_tracker:
-            self.store.save_session(
-                s.id,
-                self.policy.digest,
-                int(s.ctx.conf),
-                int(s.ctx.integ),
-                s.external_count,
-                s.tracker.dump(),
-                s.version,
-                s.n_calls,
-            )
+            self.store.save_session(SessionRow(**{**row.__dict__, "tracker": s.tracker.dump()}))
             s.tracker_dirty = False
         else:
-            self.store.update_session_state(
-                s.id, int(s.ctx.conf), int(s.ctx.integ), s.external_count, s.version, s.n_calls
-            )
+            self.store.update_session_state(row)
 
     # ------------------------------------------------------------------ host-facing
     async def list_tools(self) -> list[dict[str, Any]]:
@@ -301,6 +316,7 @@ class Gateway:
                     external_count=session.external_count,
                     tracker=session.tracker,
                     pin_ok=entry is not None and entry.pin_ok,
+                    blind=session.blind,
                 )
             except (sqlite3.Error, ValueError, KeyError, TypeError, RecursionError) as e:  # fail closed
                 log.exception("decision failed")
@@ -359,7 +375,10 @@ class Gateway:
             if len(text.encode("utf-8", "ignore")) > MAX_RESULT_BYTES:
                 raw, text, binary = error_result("weir: upstream result exceeded the size limit and was dropped"), "", 0
             label = decision.result_label
-            registered = session.tracker.register(call_id, name, label, text) is not None
+            idx = session.tracker.register(call_id, name, label, text)
+            registered = idx is not None
+            if not label.is_bottom and text and (idx is None or session.tracker.sources[idx].truncated):
+                session.blind = True  # too large (or too many) to follow: from now on the value tier cannot vouch
             session.tracker_dirty |= registered
             session.ctx = session.ctx.join(label)  # in memory first: a persistence failure must only ever over-restrict
             try:

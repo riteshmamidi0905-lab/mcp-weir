@@ -1,6 +1,8 @@
 import sqlite3
 
-from mcp_weir.store import Store
+import pytest
+
+from mcp_weir.store import SessionRow, StateIntegrityError, Store
 
 
 class Clock:
@@ -56,12 +58,60 @@ def test_hmac_key_is_stable_per_database_and_env_overrides(tmp_path, monkeypatch
     assert s.hmac_key() == bytes.fromhex("ab" * 32)
 
 
-def test_session_roundtrip(store):
-    store.save_session("s1", "pol", 2, 1, 3, b"blob", 7, 11)
-    assert store.load_session("s1") == ("pol", 2, 1, 3, b"blob", 7, 11)
-    store.update_session_state("s1", 1, 0, 4, 8, 12)
-    assert store.load_session("s1") == ("pol", 1, 0, 4, b"blob", 8, 12)
+def test_session_roundtrip_and_integrity_tag(store, tmp_path):
+    row = SessionRow("s1", "pol", 2, 1, 3, 11, 7, False, b"blob")
+    store.save_session(row)
+    assert store.load_session("s1") == row
+    upd = SessionRow("s1", "pol", 1, 0, 4, 12, 8, True, b"")
+    store.update_session_state(upd)
+    got = store.load_session("s1")
+    assert (got.ctx_conf, got.external_count, got.n_calls, got.version, got.blind, got.tracker) == (
+        1,
+        4,
+        12,
+        8,
+        True,
+        b"blob",
+    )
     assert store.load_session("nope") is None
+    with pytest.raises(KeyError):
+        store.update_session_state(SessionRow("missing", "pol", 0, 0, 0, 0, 0))
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "UPDATE sessions SET ctx_conf=0",  # forget that a secret was seen
+        "UPDATE sessions SET ctx_integ=0",
+        "UPDATE sessions SET external_count=0",  # reset the egress budget
+        "UPDATE sessions SET n_calls=0",
+        "UPDATE sessions SET blind=0",
+        "UPDATE sessions SET version=version+1",
+        "UPDATE sessions SET policy_sha='x'",
+        "UPDATE sessions SET tracker=X'00'",  # swap the tracker for an empty one
+    ],
+)
+def test_tampering_with_a_persisted_session_is_detected(tmp_path, tamper):
+    path = str(tmp_path / "t.db")
+    s = Store(path)
+    s.save_session(SessionRow("s1", "pol", 2, 1, 3, 11, 7, True, b"blob-bytes"))
+    s.close()
+    db = sqlite3.connect(path)
+    db.execute(tamper)
+    db.commit()
+    db.close()
+    with pytest.raises(StateIntegrityError):
+        Store(path).load_session("s1")
+
+
+def test_a_different_key_cannot_forge_a_session(tmp_path, monkeypatch):
+    path = str(tmp_path / "k.db")
+    monkeypatch.setenv("WEIR_HMAC_KEY", "aa" * 32)
+    s = Store(path)
+    s.save_session(SessionRow("s1", "pol", 2, 1, 3, 11, 7, False, b"x"))
+    monkeypatch.setenv("WEIR_HMAC_KEY", "bb" * 32)
+    with pytest.raises(StateIntegrityError):
+        Store(path).load_session("s1")
 
 
 def test_approval_lifecycle_single_use():

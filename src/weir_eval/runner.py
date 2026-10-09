@@ -31,11 +31,12 @@ ARM_RULES: dict[str, dict[str, Any] | None] = {
         trifecta="off",
         untrusted_read="off",
         egress_budget="off",
+        tracker_limit="off",
         gate_egress="approve",
         gate_write="approve",
     ),  # static approval gates only
-    "A2": dict(trifecta="off", untrusted_read="off", egress_budget="off"),  # value tier
-    "A3s": dict(dest_untrusted="off", flow_conf_secret="off", flow_conf_internal="off"),  # session tier only
+    "A2": dict(trifecta="off", untrusted_read="off", egress_budget="off"),  # value tier (+ its blindness guard)
+    "A3s": dict(dest_untrusted="off", flow_conf_secret="off", flow_conf_internal="off", tracker_limit="off"),  # session tier only
     "A3": {},  # everything (the shipped defaults)
     "A3d": dict(trifecta="deny", untrusted_read="deny", egress_budget="deny"),  # session tier that a human cannot waive
 }

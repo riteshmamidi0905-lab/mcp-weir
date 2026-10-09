@@ -7,6 +7,7 @@ any ``sqlite3.Error`` as "the check could not run" and fail closed.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -17,7 +18,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 GENESIS = "0" * 64
 
 _SCHEMA = """
@@ -25,7 +26,8 @@ CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(
   id TEXT PRIMARY KEY, created REAL NOT NULL, policy_sha TEXT NOT NULL,
   ctx_conf INTEGER NOT NULL, ctx_integ INTEGER NOT NULL, external_count INTEGER NOT NULL,
-  tracker BLOB, version INTEGER NOT NULL, n_calls INTEGER NOT NULL DEFAULT 0);
+  tracker BLOB, version INTEGER NOT NULL, n_calls INTEGER NOT NULL DEFAULT 0,
+  blind INTEGER NOT NULL DEFAULT 0, tracker_sha TEXT NOT NULL DEFAULT '', mac TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS events(
   seq INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, session_id TEXT, kind TEXT NOT NULL,
   payload TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL);
@@ -44,6 +46,23 @@ def canonical(obj: Any) -> str:
 
 def event_hash(prev: str, ts: float, session_id: str | None, kind: str, payload: str) -> str:
     return hashlib.sha256("\x1f".join((prev, repr(ts), session_id or "", kind, payload)).encode()).hexdigest()
+
+
+class StateIntegrityError(RuntimeError):
+    """Persisted session state was modified outside the gateway (or is corrupt)."""
+
+
+@dataclass(frozen=True)
+class SessionRow:
+    id: str
+    policy_sha: str
+    ctx_conf: int
+    ctx_integ: int
+    external_count: int
+    n_calls: int
+    version: int
+    blind: bool = False
+    tracker: bytes = b""
 
 
 @dataclass(frozen=True)
@@ -87,41 +106,88 @@ class Store:
             return bytes.fromhex(self._db.execute("SELECT value FROM meta WHERE key='hmac_key'").fetchone()[0])
 
     # ------------------------------------------------------------------ sessions
-    def save_session(
-        self,
-        sid: str,
-        policy_sha: str,
-        ctx_conf: int,
-        ctx_integ: int,
-        external_count: int,
-        tracker: bytes,
-        version: int,
-        n_calls: int = 0,
-    ) -> None:
+    def _mac(self, row: SessionRow, tracker_sha: str) -> str:
+        msg = canonical(
+            [
+                row.id,
+                row.policy_sha,
+                row.ctx_conf,
+                row.ctx_integ,
+                row.external_count,
+                row.n_calls,
+                row.version,
+                int(row.blind),
+                tracker_sha,
+            ]
+        )
+        return hmac.new(self.hmac_key(), msg.encode(), hashlib.sha256).hexdigest()
+
+    def save_session(self, row: SessionRow) -> None:
+        """Insert or replace a session including its tracker. The row carries a MAC over every field and the tracker's
+        digest, so a modified context label, counter or tracker is detected on load. With the key in the same file this
+        catches accidents and casual edits only; with WEIR_HMAC_KEY supplied from outside it resists editing the file."""
+        tsha = hashlib.sha256(row.tracker).hexdigest()
         with self._lock:
             self._db.execute(
-                "INSERT INTO sessions(id, created, policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls) "
-                "VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET policy_sha=excluded.policy_sha, "
-                "ctx_conf=excluded.ctx_conf, ctx_integ=excluded.ctx_integ, external_count=excluded.external_count, "
-                "tracker=excluded.tracker, version=excluded.version, n_calls=excluded.n_calls",
-                (sid, self.clock(), policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls),
+                "INSERT INTO sessions(id, created, policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls,"
+                " blind, tracker_sha, mac) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET policy_sha=excluded.policy_sha,"
+                " ctx_conf=excluded.ctx_conf, ctx_integ=excluded.ctx_integ, external_count=excluded.external_count,"
+                " tracker=excluded.tracker, version=excluded.version, n_calls=excluded.n_calls, blind=excluded.blind,"
+                " tracker_sha=excluded.tracker_sha, mac=excluded.mac",
+                (
+                    row.id,
+                    self.clock(),
+                    row.policy_sha,
+                    row.ctx_conf,
+                    row.ctx_integ,
+                    row.external_count,
+                    row.tracker,
+                    row.version,
+                    row.n_calls,
+                    int(row.blind),
+                    tsha,
+                    self._mac(row, tsha),
+                ),
             )
 
-    def update_session_state(
-        self, sid: str, ctx_conf: int, ctx_integ: int, external_count: int, version: int, n_calls: int
-    ) -> None:
+    def update_session_state(self, row: SessionRow) -> None:
+        """Update everything except the tracker (unchanged); the stored tracker digest stays bound by the new MAC."""
         with self._lock:
-            self._db.execute(
-                "UPDATE sessions SET ctx_conf=?, ctx_integ=?, external_count=?, version=?, n_calls=? WHERE id=?",
-                (ctx_conf, ctx_integ, external_count, version, n_calls, sid),
-            )
+            self._db.execute("BEGIN IMMEDIATE")
+            try:
+                cur = self._db.execute("SELECT tracker_sha FROM sessions WHERE id=?", (row.id,)).fetchone()
+                if cur is None:
+                    raise KeyError(row.id)
+                self._db.execute(
+                    "UPDATE sessions SET ctx_conf=?, ctx_integ=?, external_count=?, version=?, n_calls=?, blind=?, mac=? WHERE id=?",
+                    (
+                        row.ctx_conf,
+                        row.ctx_integ,
+                        row.external_count,
+                        row.version,
+                        row.n_calls,
+                        int(row.blind),
+                        self._mac(row, cur[0]),
+                        row.id,
+                    ),
+                )
+                self._db.execute("COMMIT")
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
 
-    def load_session(self, sid: str) -> tuple[Any, ...] | None:
+    def load_session(self, sid: str) -> SessionRow | None:
         with self._lock:
-            row: tuple[Any, ...] | None = self._db.execute(
-                "SELECT policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls FROM sessions WHERE id=?",
+            r = self._db.execute(
+                "SELECT policy_sha, ctx_conf, ctx_integ, external_count, tracker, version, n_calls, blind, tracker_sha, mac"
+                " FROM sessions WHERE id=?",
                 (sid,),
             ).fetchone()
+        if r is None:
+            return None
+        row = SessionRow(sid, r[0], r[1], r[2], r[3], r[6], r[5], bool(r[7]), r[4] or b"")
+        if hashlib.sha256(row.tracker).hexdigest() != r[8] or not hmac.compare_digest(self._mac(row, r[8]), r[9]):
+            raise StateIntegrityError(f"session {sid}: persisted state does not match its integrity tag")
         return row
 
     # ------------------------------------------------------------------ audit chain

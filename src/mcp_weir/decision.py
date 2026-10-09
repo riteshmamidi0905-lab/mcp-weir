@@ -57,6 +57,7 @@ def evaluate(
     external_count: int,
     tracker: Tracker,
     pin_ok: bool = True,
+    blind: bool = False,
 ) -> Decision:
     if spec is None:
         return Decision(Verdict.DENY, [RuleHit("R-UNKNOWN", Verdict.DENY, "tool is not declared in the policy")])
@@ -115,6 +116,16 @@ def evaluate(
             hits.append(RuleHit("R-FLOW-CONF", _v(act_s), "secret data would leave the trust boundary", secret))
         elif internal and act_i is not Action.OFF:
             hits.append(RuleHit("R-FLOW-CONF", _v(act_i), "internal data would leave the trust boundary", internal))
+
+    act = spec.action("tracker_limit", rules.tracker_limit)
+    if act is not Action.OFF and external and blind and ctx.conf >= Conf.INTERNAL:
+        hits.append(
+            RuleHit(
+                "R-TRACKER-LIMIT",
+                _v(act),
+                "a labelled result was too large to track fully, so the value tier cannot vouch for this call",
+            )
+        )
 
     # ---- session tier ---------------------------------------------------------------------------------
     act = spec.action("trifecta", rules.trifecta)

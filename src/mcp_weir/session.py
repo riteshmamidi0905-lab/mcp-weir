@@ -18,4 +18,5 @@ class Session:
     n_calls: int = 0
     version: int = 0
     tracker_dirty: bool = True
+    blind: bool = False  # a labelled result was too large for the tracker: the value tier cannot vouch for what follows
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)

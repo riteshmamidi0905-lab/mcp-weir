@@ -188,3 +188,37 @@ def test_shared_paths_are_untrusted(policy):
     spec = policy.tool("files__read_file")
     lab = spec.result_label_for({"path": "/shared/partner_notes.txt"})
     assert lab.integ is Integ.UNTRUSTED and lab.conf is Conf.INTERNAL
+
+
+def test_tracker_limit_rule(policy):
+    send = {"to": "jo@partner.example", **SEND}
+    kw = {"ctx": Label(Conf.INTERNAL, Integ.TRUSTED)}
+    d = evaluate(
+        policy, policy.tool("mail__send_message"), send, external_count=0, tracker=Tracker(KEY), blind=True, **kw
+    )
+    assert d.codes == ["R-TRACKER-LIMIT"] and d.verdict is Verdict.APPROVE
+    d = evaluate(
+        policy, policy.tool("mail__send_message"), send, external_count=0, tracker=Tracker(KEY), blind=False, **kw
+    )
+    assert d.verdict is Verdict.ALLOW
+    d = evaluate(
+        policy,
+        policy.tool("mail__send_message"),
+        {"to": "lee@corp.example", **SEND},
+        external_count=0,
+        tracker=Tracker(KEY),
+        blind=True,
+        **kw,
+    )
+    assert d.verdict is Verdict.ALLOW  # internal destination
+    d = evaluate(
+        policy, policy.tool("mail__send_message"), send, external_count=0, tracker=Tracker(KEY), blind=True, ctx=BOTTOM
+    )
+    assert d.verdict is Verdict.ALLOW  # nothing labelled in the context
+    p = policy.with_rules(tracker_limit="off")
+    assert (
+        evaluate(
+            p, p.tool("mail__send_message"), send, external_count=0, tracker=Tracker(KEY), blind=True, **kw
+        ).verdict
+        is Verdict.ALLOW
+    )

@@ -43,6 +43,7 @@ RULE_NAMES = (
     "egress_budget",
     "gate_egress",
     "gate_write",
+    "tracker_limit",
 )
 TARGET_KINDS = ("email", "url", "path", "other")
 _NAME = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
@@ -125,6 +126,7 @@ class RuleConfig:
     egress_budget: Action = Action.APPROVE
     gate_egress: Action = Action.OFF  # static, argument-blind approval gate on every egress call (the baseline arm)
     gate_write: Action = Action.OFF  # same, for write calls
+    tracker_limit: Action = Action.APPROVE  # external egress after a labelled result the tracker could not fully follow
     egress_budget_limit: int = 3
 
 
