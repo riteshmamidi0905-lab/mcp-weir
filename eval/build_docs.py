@@ -240,6 +240,9 @@ def readme_blocks() -> dict[str, str]:
     sp = find("test-scripted/runs.jsonl.gz", "test-scripted/runs.jsonl")
     assert sp is not None
     blocks = {"headline": make_tables.headline(read(sp))}
+    hl = json.loads((R / "headline.json").read_text())
+    if "tests" in hl:
+        blocks["inline:testcount"] = str(hl["tests"]["passed"])
     mp = find("test-realmodel/runs.jsonl.gz", "test-realmodel/runs.jsonl")
     if mp:
         rm = read(mp)
@@ -260,6 +263,11 @@ def readme_blocks() -> dict[str, str]:
 
 def apply_blocks(text: str, blocks: dict[str, str]) -> str:
     for name, body in blocks.items():
+        if name.startswith("inline:"):
+            text = re.sub(
+                rf"(<!-- gen-{name} -->).*?(<!-- /gen-{name} -->)", lambda m, b=body: m.group(1) + b + m.group(2), text
+            )
+            continue
         text = re.sub(
             rf"(<!-- gen:{name} -->).*?(<!-- /gen:{name} -->)",
             lambda m, b=body: m.group(1) + "\n" + b + "\n" + m.group(2),

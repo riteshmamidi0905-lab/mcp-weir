@@ -88,6 +88,8 @@ def main() -> None:
         if (R / name).exists():
             d = json.loads((R / name).read_text())
             out[key] = {k: v for k, v in d.items() if k != "rows"}
+    if (R / "tests.json").exists():
+        out["tests"] = json.loads((R / "tests.json").read_text())
     if (R / "adaptive" / "results.json").exists():
         out["adaptive"] = json.loads((R / "adaptive" / "results.json").read_text())
     json.dump(out, sys.stdout, indent=1, sort_keys=True)
