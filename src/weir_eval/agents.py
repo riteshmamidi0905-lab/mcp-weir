@@ -15,7 +15,7 @@ from mcp_weir.gateway import Gateway, result_text
 from mcp_weir.session import Session
 
 from . import transforms
-from .scenarios import Scenario, Step
+from .scenarios import Scenario
 
 _REF = re.compile(r"<<(\w+)((?:\|[\w:]+)*)>>")
 
@@ -75,11 +75,9 @@ class DirectEndpoint:
         self.ups = upstreams
 
     async def list_tools(self) -> list[dict[str, Any]]:
-        out = []
-        for srv, up in self.ups.items():
-            for d in await up.list_tools():
-                out.append({**d, "name": f"{srv}__{d['name']}"})
-        return out
+        # same tools in the same (sorted) order as the gateway lists them, so the model's prompt is identical in every arm
+        out = [{**d, "name": f"{srv}__{d['name']}"} for srv, up in self.ups.items() for d in await up.list_tools()]
+        return sorted(out, key=lambda d: d["name"])
 
     async def call(self, name: str, args: dict[str, Any]) -> CallRec:
         srv, tool = name.split("__", 1)
@@ -148,7 +146,7 @@ class LlamaAgent:
             method="POST",
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=self.timeout) as r:  # noqa: S310 - local server chosen by the operator
+        with urllib.request.urlopen(req, timeout=self.timeout) as r:
             out: dict[str, Any] = json.loads(r.read().decode())
             return out
 

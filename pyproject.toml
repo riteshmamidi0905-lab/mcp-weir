@@ -38,7 +38,8 @@ ignore = ["E501", "S101", "S603", "S607", "RUF012"]   # E501: long string litera
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S", "RUF001"]
-"eval/*" = ["S"]
+"src/weir_eval/*" = ["S", "RUF001", "C408", "SIM105"]
+"src/weir_testbed/*" = ["S"]
 
 [tool.mypy]
 python_version = "3.11"
