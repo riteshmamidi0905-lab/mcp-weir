@@ -30,6 +30,9 @@ PATTERNS = [
     "src/weir_eval/agents.py",
     "src/weir_eval/analysis.py",
     "src/weir_eval/bench.py",
+    "src/weir_eval/equivalence.py",
+    "src/weir_eval/run.py",
+    "src/weir_eval/freeze.py",
     "examples/policies/workspace.toml",
     "eval/PROTOCOL.md",
 ]

@@ -24,6 +24,7 @@ egress_budget     = "approve"
 egress_budget_limit = 3
 gate_egress       = "off"       # static gate on every egress call: the permissions-only baseline arm turns this on
 gate_write        = "off"
+tracker_limit     = "approve"   # external egress after a labelled result too large to track fully
 
 [upstreams.mail]
 command = ["$PYTHON", "-m", "weir_testbed.servers", "mail"]
