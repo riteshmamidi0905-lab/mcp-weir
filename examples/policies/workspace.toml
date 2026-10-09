@@ -58,7 +58,7 @@ effect = "read"
 result = { conf = "internal", integ = "trusted" }
 result_rules = [
   { arg = "path", glob = "/secrets/*", conf = "secret" },
-  { arg = "path", glob = "/public/*", conf = "public" },
+  { arg = "path", glob = "/public/*", conf = "public", lower = true },   # explicit, canonical-path-only downgrade
   { arg = "path", glob = "/shared/*", integ = "untrusted" },   # files that outside parties can write
 ]
 

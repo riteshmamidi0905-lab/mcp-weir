@@ -102,6 +102,34 @@ def test_result_rule_missing_or_odd_argument_is_over_labelled(policy):
     assert ResultRule("p", SECRET, equals="/x").matches({"p": "/x"})
 
 
-def test_public_rule_does_not_lower_the_label(policy):
-    # a /public/ rule can only raise a label via join; the base label stays internal
-    assert policy.tool("files__read_file").result_label_for({"path": "/public/sheet.txt"}).conf is Conf.INTERNAL
+@pytest.mark.parametrize(
+    ("path", "conf"),
+    [
+        ("/public/sheet.txt", Conf.PUBLIC),  # the explicit downgrade
+        ("/docs/q3.txt", Conf.INTERNAL),
+        ("/public/../secrets/payroll.txt", Conf.SECRET),  # traversal out of /public must NOT keep the downgrade
+        ("/public/%2e%2e/secrets/payroll.txt", Conf.SECRET),  # percent-encoded traversal: raising rules win
+        ("//public/sheet.txt", Conf.PUBLIC),
+        ("public/sheet.txt", Conf.INTERNAL),  # relative paths never get the downgrade
+        ("/public/../docs/q3.txt", Conf.INTERNAL),
+        ("/PUBLIC/sheet.txt", Conf.INTERNAL),  # case-sensitive
+    ],
+)
+def test_public_downgrade_is_explicit_and_cannot_be_used_to_hide_a_secret(policy, path, conf):
+    assert policy.tool("files__read_file").result_label_for({"path": path}).conf is conf
+
+
+def test_lowering_rules_can_only_lower(policy):
+    from mcp_weir.policy import ResultRule, ToolSpec
+
+    spec = ToolSpec(
+        "s__t",
+        "s",
+        "t",
+        Effect.READ,
+        Label(Conf.PUBLIC, Integ.UNTRUSTED),
+        (ResultRule("p", Label(Conf.SECRET, Integ.TRUSTED), glob="/x/*", lower=True),),
+    )
+    assert spec.result_label_for({"p": "/x/y"}) == Label(
+        Conf.PUBLIC, Integ.TRUSTED
+    )  # min of each component, never raised

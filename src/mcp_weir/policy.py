@@ -56,6 +56,9 @@ class ResultRule:
     label: Label
     glob: str | None = None
     equals: str | None = None
+    lower: bool = (
+        False  # may only LOWER the label, and only on the canonical absolute path (see ToolSpec.result_label_for)
+    )
 
     def matches(self, args: dict[str, Any]) -> bool:
         if self.arg not in args:
@@ -74,6 +77,15 @@ class ResultRule:
                 candidates.add(canon_path("/" + c))
         return any(fnmatch.fnmatchcase(c, self.glob) for c in candidates)
 
+    def matches_canonical(self, args: dict[str, Any]) -> bool:
+        """Strict match for lowering rules: the argument must be an absolute path whose canonical form matches the glob."""
+        value = args.get(self.arg)
+        if not isinstance(value, str) or not value.startswith("/") or "%" in value or "\x00" in value:
+            return False
+        if self.equals is not None and canon_path(value) == self.equals:
+            return True
+        return self.glob is not None and fnmatch.fnmatchcase(canon_path(value), self.glob)
+
 
 @dataclass(frozen=True)
 class ToolSpec:
@@ -88,9 +100,14 @@ class ToolSpec:
     rule_overrides: tuple[tuple[str, Action], ...] = ()
 
     def result_label_for(self, args: dict[str, Any]) -> Label:
+        """Base label; then ``lower`` rules (canonical path only, never fail-open on odd spellings); then raising rules
+        (any spelling, so an ambiguous path is assumed to be the most sensitive thing it could mean)."""
         label = self.result
         for r in self.result_rules:
-            if r.matches(args):
+            if r.lower and r.matches_canonical(args):
+                label = Label(min(label.conf, r.label.conf), min(label.integ, r.label.integ))
+        for r in self.result_rules:
+            if not r.lower and r.matches(args):
                 label = label.join(r.label)
         return label
 
@@ -254,7 +271,7 @@ def parse_policy(data: dict[str, Any]) -> Policy:
         result = _label(s.get("result", {}), f"{where}.result")
         rrules: list[ResultRule] = []
         for i, rr in enumerate(s.get("result_rules", [])):
-            rr = _only(rr, {"arg", "glob", "equals", "conf", "integ"}, f"{where}.result_rules[{i}]")
+            rr = _only(rr, {"arg", "glob", "equals", "conf", "integ", "lower"}, f"{where}.result_rules[{i}]")
             if not isinstance(rr.get("arg"), str) or ("glob" not in rr and "equals" not in rr):
                 raise PolicyError(f"{where}.result_rules[{i}]: needs arg and glob or equals")
             rrules.append(
@@ -263,6 +280,7 @@ def parse_policy(data: dict[str, Any]) -> Policy:
                     _label({k: rr[k] for k in ("conf", "integ") if k in rr}, where),
                     rr.get("glob"),
                     rr.get("equals"),
+                    bool(rr.get("lower", False)),
                 )
             )
         target = _only(s.get("target", {}), set(s.get("target", {})), f"{where}.target")

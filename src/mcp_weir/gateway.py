@@ -17,6 +17,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from .destinations import parse_url
 from .decision import Decision, RuleHit, Verdict, evaluate
 from .labels import Conf, Integ, Label
 from .pinning import definition_hash
@@ -91,6 +92,40 @@ def _hit_dict(h: RuleHit) -> dict[str, Any]:
         "message": h.message,
         "sources": [_match_dict(m) for m in h.matches],
     }
+
+
+def _view_target(kind: str, value: Any, flat: str) -> Any:
+    """A destination is always shown (that is what an approver is deciding), but a URL's query and fragment are not:
+    they are exactly where exfiltrated data goes."""
+    if kind == "url":
+        u = parse_url(value)
+        if u is None:
+            return {
+                "len": len(flat),
+                "sha256": hashlib.sha256(flat.encode()).hexdigest()[:16],
+                "note": "unparseable URL",
+            }
+        port = f":{u.port}" if u.port else ""
+        return f"{u.scheme}://{u.host}{port}{u.path[:200]}" + (f"?...({len(u.query)} chars)" if u.query else "")
+    return flat[:200]
+
+
+def view_args(spec: ToolSpec | None, args: dict[str, Any]) -> dict[str, Any]:
+    """What a human or a log may see. Target arguments (recipient, URL host and path, file path) are in clear; other
+    arguments the policy does not declare as *content* are in clear (truncated); content arguments only as length and
+    digest. Unknown tools get digests only."""
+    content = set(spec.content) if spec else None
+    kinds = dict(spec.targets) if spec else {}
+    out: dict[str, Any] = {}
+    for k, v in args.items():
+        flat = v if isinstance(v, str) else canonical(v)
+        if k in kinds:
+            out[k] = _view_target(kinds[k], v, flat)
+        elif content is not None and k not in content:
+            out[k] = flat[:200]
+        else:
+            out[k] = {"len": len(flat), "sha256": hashlib.sha256(flat.encode()).hexdigest()[:16]}
+    return out
 
 
 class Gateway:
@@ -390,7 +425,7 @@ class Gateway:
             decision.codes,
             {
                 "tool": name,
-                "args": self._view_args(spec, args),
+                "args": view_args(spec, args),
                 "rules": [h.message for h in decision.hits],
                 "flows": [_match_dict(m) for h in decision.hits for m in h.matches][:8],
             },
@@ -457,20 +492,6 @@ class Gateway:
             error_result(msg), decision, False, call_id, call_hash, None, (time.perf_counter() - t_start) * 1e6, codes
         )
 
-    @staticmethod
-    def _view_args(spec: ToolSpec | None, args: dict[str, Any]) -> dict[str, Any]:
-        """What a human or a log may see: every argument the policy does not declare as *content* in clear (truncated),
-        content arguments only as length and digest. Unknown tools get digests only."""
-        content = set(spec.content) if spec else None
-        out: dict[str, Any] = {}
-        for k, v in args.items():
-            flat = v if isinstance(v, str) else canonical(v)
-            if content is not None and k not in content:
-                out[k] = flat[:200]
-            else:
-                out[k] = {"len": len(flat), "sha256": hashlib.sha256(flat.encode()).hexdigest()[:16]}
-        return out
-
     def _decision_payload(
         self,
         call_id: str,
@@ -491,7 +512,7 @@ class Gateway:
             "external": d.external,
             "result_label": str(d.result_label),
             "ctx_before": str(ctx),
-            "args": self._view_args(spec, args),
+            "args": view_args(spec, args),
             "approval": approval,
             "destinations": [{"kind": x.kind, "reason": x.reason} for x in d.destinations],
         }
