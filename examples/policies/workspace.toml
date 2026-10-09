@@ -1,0 +1,85 @@
+# Weir policy for the synthetic "workspace" used in the tests, the demo and the evaluation.
+# Servers: mail, files, web, notes (see src/weir_testbed). Everything here is invented.
+
+[policy]
+name = "workspace"
+internal_domains = ["corp.example"]
+max_arg_bytes = 65536
+approval_ttl_seconds = 900
+call_timeout_seconds = 20
+
+[tracker]
+k_secret = 8         # 8-character windows of normalised secret text
+k_internal = 24      # 24-character windows of normalised internal text
+min_unit = 5
+
+# Global rule actions: off | approve | deny. The evaluation arms differ only in this section.
+[rules]
+dest_untrusted    = "approve"   # recipient/target chosen by untrusted text
+flow_conf_secret  = "deny"      # secret data in the content of an external call
+flow_conf_internal = "approve"  # internal data in the content of an external call
+trifecta          = "approve"   # external egress after the session saw secret AND untrusted data
+untrusted_read    = "approve"   # a secret read after the session saw untrusted data
+egress_budget     = "approve"
+egress_budget_limit = 3
+
+[upstreams.mail]
+command = ["$PYTHON", "-m", "weir_testbed.servers", "mail"]
+[upstreams.files]
+command = ["$PYTHON", "-m", "weir_testbed.servers", "files"]
+[upstreams.web]
+command = ["$PYTHON", "-m", "weir_testbed.servers", "web"]
+[upstreams.notes]
+command = ["$PYTHON", "-m", "weir_testbed.servers", "notes"]
+
+# ---------------------------------------------------------------- mail
+[tools.mail__list_messages]
+effect = "read"
+result = { conf = "internal", integ = "untrusted" }      # senders and subjects are attacker-controlled
+
+[tools.mail__read_message]
+effect = "read"
+result = { conf = "internal", integ = "untrusted" }      # bodies are attacker-controlled
+
+[tools.mail__send_message]
+effect = "egress"
+target = { to = "email" }
+content = ["subject", "body"]
+
+# ---------------------------------------------------------------- files
+[tools.files__list_files]
+effect = "read"
+result = { conf = "internal", integ = "trusted" }
+
+[tools.files__read_file]
+effect = "read"
+result = { conf = "internal", integ = "trusted" }
+result_rules = [
+  { arg = "path", glob = "/secrets/*", conf = "secret" },
+  { arg = "path", glob = "/public/*", conf = "public" },
+]
+
+[tools.files__write_file]
+effect = "write"
+target = { path = "path" }
+
+[tools.files__delete_file]
+effect = "write"
+target = { path = "path" }
+
+# ---------------------------------------------------------------- web
+[tools.web__fetch_url]
+effect = "egress"                 # the request itself leaves the trust boundary, and the URL can carry data
+target = { url = "url" }
+content = ["url"]
+result = { conf = "public", integ = "untrusted" }
+rules = { dest_untrusted = "off" }   # reading the web from links is the point of a web tool; flow rules still apply
+
+# ---------------------------------------------------------------- notes
+[tools.notes__publish_note]
+effect = "egress"                 # a shared page is readable outside the boundary
+content = ["title", "body"]
+
+[tools.notes__save_note]
+effect = "write"
+target = { title = "other" }

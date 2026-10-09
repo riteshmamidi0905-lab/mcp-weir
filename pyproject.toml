@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-weir"
+version = "0.1.0"
+description = "An information-flow gateway for MCP tool calls: labels, value tracking, session rules, approvals, audit. Research prototype."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ritesh Mamidi" }]
+dependencies = []                      # the library itself uses only the standard library
+
+[project.optional-dependencies]
+test = ["pytest>=8", "hypothesis>=6.100"]
+interop = ["mcp==2.3.0"]               # the official SDK: used by the testbed servers and interoperability tests only
+dev = ["ruff>=0.6", "mypy>=1.10"]
+
+[project.scripts]
+weir = "mcp_weir.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["interop: needs the official MCP SDK", "slow: long-running"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "S", "C4", "SIM", "RUF"]
+ignore = ["E501", "S101", "S603", "S607", "RUF012"]   # E501: long string literals are left to the formatter; subprocess argv is fixed by the caller
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "RUF001"]
+"eval/*" = ["S"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
