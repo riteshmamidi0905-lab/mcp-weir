@@ -37,7 +37,7 @@ select = ["E", "F", "W", "B", "UP", "S", "C4", "SIM", "RUF"]
 ignore = ["E501", "S101", "S603", "S607", "RUF012"]   # E501: long string literals are left to the formatter; subprocess argv is fixed by the caller
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S", "RUF001"]
+"tests/*" = ["S", "RUF001", "RUF003"]
 "src/weir_eval/*" = ["S", "RUF001", "C408", "SIM105"]
 "src/weir_testbed/*" = ["S"]
 

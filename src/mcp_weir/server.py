@@ -101,7 +101,7 @@ async def serve(gateway: Gateway, session: Session, read_line: ReadLine, write_l
             continue
         try:
             msg = json.loads(line)
-        except ValueError:
+        except (ValueError, RecursionError):  # not JSON, or nested so deeply that decoding itself overflows
             await send(_error(None, -32700, "parse error"))
             continue
         if not isinstance(msg, dict) or msg.get("jsonrpc") != "2.0":

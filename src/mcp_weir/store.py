@@ -84,13 +84,28 @@ class Store:
         self.path, self.clock = path, clock
         self._lock = threading.RLock()
         self._db = sqlite3.connect(path, check_same_thread=False, isolation_level=None, timeout=10.0)
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.execute("PRAGMA synchronous=NORMAL")
-        self._db.executescript(_SCHEMA)
-        self._db.execute("INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', ?)", (SCHEMA_VERSION,))
-        row = self._db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        row = self._init_schema()
         if row[0] != SCHEMA_VERSION:
             raise RuntimeError(f"database schema {row[0]} is not supported by this version ({SCHEMA_VERSION})")
+
+    def _init_schema(self) -> tuple[str]:
+        """Several gateways may open one new database at the same moment; switching to WAL and creating tables then
+        needs locks that SQLite's busy timeout does not always wait for, so retry briefly."""
+        for attempt in range(15):
+            try:
+                self._db.execute("PRAGMA journal_mode=WAL")
+                self._db.execute("PRAGMA synchronous=NORMAL")
+                self._db.executescript(_SCHEMA)
+                self._db.execute(
+                    "INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', ?)", (SCHEMA_VERSION,)
+                )
+                row: tuple[str] = self._db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+                return row
+            except sqlite3.OperationalError as e:
+                if "locked" not in str(e) or attempt == 14:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+        raise AssertionError("unreachable")
 
     def close(self) -> None:
         with self._lock:

@@ -49,7 +49,10 @@ class InProcessUpstream:
         t = self._tools.get(name)
         if t is None:
             return result_for(f"error: unknown tool {name}", True)
-        return result_for(t.fn(arguments))
+        try:
+            return result_for(t.fn(arguments))
+        except Exception as e:
+            return result_for(f"error: {type(e).__name__}: {str(e)[:100]}", True)
 
 
 def in_process_upstreams(world: World) -> dict[str, InProcessUpstream]:
@@ -137,7 +140,10 @@ def main(argv: list[str] | None = None) -> None:
             if t is None:
                 out({"jsonrpc": "2.0", "id": rid, "error": {"code": -32602, "message": f"unknown tool {name}"}})
                 continue
-            res = result_for(t.fn(args))
+            try:
+                res = result_for(t.fn(args))
+            except Exception as e:
+                res = result_for(f"error: {type(e).__name__}: {str(e)[:100]}", True)
             flush_effects()
             out({"jsonrpc": "2.0", "id": rid, "result": res})
             if fault and fault.get("mode") == "rugpull" and calls >= fault.get("after_calls", 1) and not changed:

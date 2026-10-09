@@ -94,6 +94,15 @@ def _hit_dict(h: RuleHit) -> dict[str, Any]:
     }
 
 
+def _flat(v: Any) -> str:
+    if isinstance(v, str):
+        return v
+    try:
+        return canonical(v)
+    except (RecursionError, ValueError, TypeError):
+        return "<unserialisable value>"
+
+
 def _view_target(kind: str, value: Any, flat: str) -> Any:
     """A destination is always shown (that is what an approver is deciding), but a URL's query and fragment are not:
     they are exactly where exfiltrated data goes."""
@@ -118,7 +127,7 @@ def view_args(spec: ToolSpec | None, args: dict[str, Any]) -> dict[str, Any]:
     kinds = dict(spec.targets) if spec else {}
     out: dict[str, Any] = {}
     for k, v in args.items():
-        flat = v if isinstance(v, str) else canonical(v)
+        flat = _flat(v)
         if k in kinds:
             out[k] = _view_target(kinds[k], v, flat)
         elif content is not None and k not in content:
@@ -279,7 +288,12 @@ class Gateway:
             args = arguments if isinstance(arguments, dict) else None
             spec = self.policy.tool(name) if isinstance(name, str) else None
             entry = self.tools.get(name) if isinstance(name, str) else None
-            call_hash = hashlib.sha256(canonical({"tool": name, "args": args}).encode()).hexdigest()
+            try:
+                canon_call = canonical({"tool": name, "args": args})
+            except (RecursionError, ValueError, TypeError):  # nested too deeply or not JSON: refuse, never crash
+                canon_call = ""
+                args = None
+            call_hash = hashlib.sha256(canon_call.encode()).hexdigest()
             if self._stale and entry is not None and entry.server in self._stale:
                 try:
                     await self.refresh_tools({entry.server})
@@ -297,7 +311,7 @@ class Gateway:
                         Decision(Verdict.DENY, [RuleHit("R-LIMIT", Verdict.DENY, "arguments must be a JSON object")]),
                         t_start,
                     )
-                if len(canonical(args)) > self.policy.max_arg_bytes:
+                if len(canon_call) > self.policy.max_arg_bytes + 64:
                     return self._blocked(
                         session,
                         call_id,
@@ -357,7 +371,9 @@ class Gateway:
         try:
             raw = await self.upstreams[entry.server].call_tool(entry.original, args, self.policy.call_timeout_seconds)
             is_uncertain = False
-        except UpstreamError as e:
+        except Exception as e:
+            if not isinstance(e, UpstreamError):
+                log.exception("upstream raised unexpectedly")
             raw, is_uncertain = (
                 error_result(
                     f"weir: upstream failure for {name}: {str(e)[:200]}. The call may or may not have taken effect; it was not retried."

@@ -177,7 +177,7 @@ class StdioUpstream:
                     break
                 try:
                     msg = json.loads(line)
-                except ValueError:
+                except (ValueError, RecursionError):
                     log.warning("upstream %s sent non-JSON output", self.name)
                     continue
                 if isinstance(msg, dict):
