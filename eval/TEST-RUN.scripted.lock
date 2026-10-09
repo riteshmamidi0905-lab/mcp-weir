@@ -1,0 +1,11 @@
+{
+  "freeze_root": "0aeef30b283745c1e5042cee4acad3d51b152c706d1186d4e87b3e287e573ec3",
+  "argv": [
+    "--suite",
+    "test",
+    "--out",
+    "eval/results/test-scripted",
+    "--rugpull"
+  ],
+  "started": "2026-10-08T22:15:10-0500"
+}

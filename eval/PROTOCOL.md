@@ -99,7 +99,7 @@ The headline cells for the closing report are (A3, `strict`) and (A3d, `strict`)
 
 * **No change to the gateway, policy, scenario generator, oracles or runner after the freeze.** `weir_eval.freeze verify` must pass; the held-out runner refuses to start otherwise.
 * The held-out suite is run **once per agent kind**. A second run needs `--rerun` and is labelled "not held out".
-* A defect in the **harness** (not the gateway) found after the freeze is fixed only by an amendment below, with the date, the reason, the effect on results, and a labelled re-run; the original result stays in the repository.
+* A defect in the **harness** (not the gateway) found after the freeze is fixed only by an amendment (see *Amendments* below; each amendment re-freezes openly and records which hashes changed), with the date, the reason, the effect on results, and a labelled re-run; the original result stays in the repository.
 * Failures are reported with the numbers. Nothing is deleted or re-run because it looks bad.
 
 ## 9 · Red-teaming
@@ -113,4 +113,5 @@ The headline cells for the closing report are (A3, `strict`) and (A3d, `strict`)
 One author wrote the gateway, the testbed, the scenarios and the oracles; no independent review. Synthetic data, toy tools, English, one small model on one machine, deterministic oracles that know the ground truth, an oracle "human" rather than a person. The scripted attacker is a worst case for *following* instructions and a weak case for *adapting* to the defence.
 
 ## Amendments
-*(none yet)*
+
+**A1 · 2026-10-08, after the scripted held-out run and before any real-model run (freeze v1.1).** The protocol lists the real-model cells as an explicit set (A0/`none`, A1/`strict`, A2/`strict`, A3/`strict`, A3/`careless`, A3d/`careless`; benign A0/`none`, A3/`none`, A3/`careless`), which `weir_eval.run` (a Cartesian product of arms and modes, one lock per invocation) cannot express in a single held-out invocation. `eval/run_realmodel.py` was added to run exactly that list in one process with the same lock, the same freeze check and the frozen `run_one`; it is hashed in the freeze. `weir_eval/freeze.py` gained the new file in its pattern list. This amendment changes this document and those two files only: every hash of the gateway, the policy, the scenario generator, the oracles, the runner, the agents and the analysis is **identical** to freeze v1 (`eval/FREEZE-HISTORY.md` lists both freezes and the file-by-file comparison). The scripted held-out results were produced under freeze v1 (root `0aeef30b…`) and are unaffected.

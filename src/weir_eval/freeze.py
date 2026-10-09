@@ -33,6 +33,7 @@ PATTERNS = [
     "src/weir_eval/equivalence.py",
     "src/weir_eval/run.py",
     "src/weir_eval/freeze.py",
+    "eval/run_realmodel.py",
     "examples/policies/workspace.toml",
     "eval/PROTOCOL.md",
 ]

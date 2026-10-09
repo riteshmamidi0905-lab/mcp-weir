@@ -5,7 +5,8 @@
     "python": "3.12.15"
   },
   "files": {
-    "eval/PROTOCOL.md": "e523d6d72042e2cfad9f0e03687ddff6b0d308c64a71430fffd94c78a1f5df52",
+    "eval/PROTOCOL.md": "f741f057d4bc258af5439bd93175cb97e270e60d6e308eb6e2d9f27e426cb53b",
+    "eval/run_realmodel.py": "be7e5d85b099b67f34ee57411fc8a692a092b2ba567bdd31f809ce9a6773932e",
     "examples/policies/workspace.toml": "2556393404876548dcdeb64cc1a313b93c367be953a268989285f09aa32c037e",
     "src/mcp_weir/__init__.py": "394fe7c4603af530b356da77b061c57ee1a33fd3a1c2509ab70c9e6138824c7c",
     "src/mcp_weir/__main__.py": "6d8b7d7846a845059d7a3107143f11131f63c5511d669b44085b15ec5e3d2279",
@@ -26,7 +27,7 @@
     "src/weir_eval/analysis.py": "5cd6aea53d9d6eb6f4acefd0cd92ff8c173e4eb2cbf0cf011f3e3b9f9e4a6d60",
     "src/weir_eval/bench.py": "10141a1805e7b741becbebb49445517469e4ca867d4989653d384eec445ded2d",
     "src/weir_eval/equivalence.py": "42ec91ead7e0a6df868ce8b332d3574985a9da04e11a7f874a28196fb5f13cf1",
-    "src/weir_eval/freeze.py": "ad01172cec01dcd452aab9f427da77124317602a30e9dbcbfb1d8b2043a59735",
+    "src/weir_eval/freeze.py": "51e910655770d7ef8777786adc7b46aaedc806e95c3fae33a5b3c947f244f792",
     "src/weir_eval/oracles.py": "ba0fad0035b7b57a1d5f0a0d8bcf1d99163bc041ebf3d712368938fe08b003ca",
     "src/weir_eval/run.py": "11189f9c90c643b157bea6f0ce60af6b6ae34b4ad17b76efeed386687ec04875",
     "src/weir_eval/runner.py": "4459703dffc1b28d9a9764d2bf50532fed45ee4011fa1716e6c5b91f5c1d3aeb",
@@ -37,7 +38,7 @@
     "src/weir_testbed/servers.py": "44b41e2155373deb05e246f995d4e558c5be3b48420a2454bcc67570fe10d341",
     "src/weir_testbed/world.py": "ac24b6e9a2f826f6ea2bbb4836754b30c57b91b814f21c35305dd74a2ffa221c"
   },
-  "root_sha256": "0aeef30b283745c1e5042cee4acad3d51b152c706d1186d4e87b3e287e573ec3",
+  "root_sha256": "20bf6d2083f977ac48f6d83b6f307c67c0f29bb811ef009bef0980608a2390a3",
   "suites": {
     "dev": "262422884221b225da8247cc4974043d8081b1645caaf2a04c2e3af11fe84bb2",
     "test": "5ff673c6ea1306d6e41044e45d92f64487d89e7083f5e611f5cd0c40b88b0a86"
