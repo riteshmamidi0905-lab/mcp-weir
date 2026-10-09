@@ -52,7 +52,7 @@ flowchart LR
 | `destinations` | parse e-mail addresses and URLs; internal-vs-external classification; fails closed | nothing |
 | `tracker` | normalise text, keyed k-gram and entity index, decode base64/hex/percent spans, match arguments | nothing |
 | `decision` | evaluate rules in fixed order, return all hits and the most restrictive effect | `policy`, `tracker`, `destinations`, `labels` |
-| `store` / `audit` / `approvals` | SQLite persistence; tamper-evident event chain; single-use approvals bound to the exact call | `sqlite3` |
+| `store` / `audit` / `approvals` | SQLite persistence; MAC-protected sessions with an append-only tracker journal; tamper-evident event chain; single-use approvals bound to the exact call | `sqlite3` |
 | `pinning` | hash tool definitions, compare with a lock file | nothing |
 | `upstream` | one asynchronous JSON-RPC client per real server: handshake, timeouts, crash detection, `list_changed` | nothing |
 | `gateway` | the per-call pipeline (below); transport-agnostic | everything above |
@@ -131,11 +131,14 @@ The evaluation exists to measure exactly this trade-off.
 | Table | Columns | Notes |
 |---|---|---|
 | `meta` | key, value | schema version, HMAC key (see below) |
-| `sessions` | id, created, policy_sha256, ctx_conf, ctx_integ, external_count, tracker (blob), version | restored on resume |
-| `events` | seq, ts, session_id, kind, payload (JSON), prev_hash, hash | append-only chain, `hash = SHA-256(prev_hash ‖ canonical JSON of the row)` |
-| `approvals` | id, session_id, call_hash, tool, rules, state, created, expires, resolved_at, consumed_at | state ∈ pending / approved / denied / consumed / expired |
+| `sessions` | id, policy_sha, ctx_conf, ctx_integ, external_count, n_calls, version, blind, tracker (parameters), tracker_sha, mac | the session's state; `mac` is an HMAC over every field and the tracker's rolling digest |
+| `tracker_deltas` | session_id, idx, blob | **append-only journal**: one compressed record per labelled result, holding only keyed hashes; written in the same transaction as the session row |
+| `events` | seq, ts, session_id, kind, payload (JSON), prev_hash, hash | append-only chain, `hash = SHA-256(prev_hash ‖ fields)` |
+| `approvals` | id, session_id, call_hash, tool, rules, summary, state, created, expires, resolved_at, consumed_at | state ∈ pending / approved / denied / consumed / expired |
 
-**What is stored about labelled data.** Only keyed hashes (HMAC-SHA-256) of k-grams and entities, lengths and labels. No plaintext of a labelled value is written by the tracker, and audit payloads carry digests and short redacted previews. The key is kept in the same database file unless `WEIR_HMAC_KEY` is set, so this is hygiene against casual disclosure, **not** encryption: anyone holding the file could test guesses of low-entropy secrets.
+**Why a journal.** The first version re-serialised the whole tracker after every labelled result; the overhead benchmark (run before the evaluation was frozen) measured a p99 of 741 ms per call at 10,000 registered results. Persistence is now proportional to what was just registered (p99 0.74 ms at the same size, see `docs/evaluation.md`). A resume replays the journal and checks the rolling digest and the MAC; it also requires an intact audit chain.
+
+**What is stored about labelled data.** Only keyed hashes (BLAKE2b in keyed mode) of k-grams and entities, lengths and labels. No plaintext of a labelled value is written by the tracker; audit payloads and approval summaries carry digests, and show in clear only what the policy does not declare as content (recipient, URL host and path, file path). The key is kept in the same database file unless `WEIR_HMAC_KEY` is set, so this is hygiene against casual disclosure, **not** encryption: anyone holding the file could test guesses of low-entropy secrets, and, with the key beside the data, could also forge a session row. Supplying the key from outside the file makes the integrity tag resist editing the database.
 
 ## 6 · Failure behaviour in one table
 
