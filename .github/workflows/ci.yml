@@ -1,0 +1,39 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test,interop,dev]'
+      - run: ruff check src tests eval
+      - run: ruff format --check src tests eval
+      - run: mypy
+
+  tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e '.[test,interop]'
+      - name: Unit, property, gateway, end-to-end and SDK-interop tests
+        run: pytest -q
+      - name: Evaluation harness smoke test (scripted agents only, no model)
+        run: python -m weir_eval.run --suite smoke --out /tmp/smoke

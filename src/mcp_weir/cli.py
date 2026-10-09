@@ -135,7 +135,7 @@ def cmd_audit(a: argparse.Namespace) -> int:
             p: dict[str, Any] = ev["payload"]
             print(
                 f"#{ev['seq']:<5} {ev['session'] or '-':<14} {ev['kind']:<18} {p.get('tool', '')} {p.get('verdict', '')} "
-                f"{','.join(h['code'] for h in p.get('rules', []))}"
+                f"{','.join(h['code'] if isinstance(h, dict) else str(h) for h in p.get('rules', []))}"
             )
         return 0
     print(render_text(build_records(events)))
