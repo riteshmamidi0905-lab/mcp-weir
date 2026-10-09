@@ -203,3 +203,20 @@ class LlamaAgent:
                 msgs.append({"role": "tool", "tool_call_id": c.get("id", ""), "content": text})
         trace.final = trace.final or "[stopped: step limit]"
         return trace
+
+
+class ReplayAgent(LlamaAgent):
+    """Feeds back recorded model replies in order, so a real-model run can be replayed through the live gateway with no model.
+    The gateway's decisions are recomputed; if a tool result differs from the recording the replay is flagged as diverged."""
+
+    def __init__(self, replies: list[dict[str, Any]]) -> None:
+        super().__init__()
+        self._replies = list(replies)
+        self.used = 0
+
+    def _post(self, body: dict[str, Any]) -> dict[str, Any]:
+        if self.used >= len(self._replies):
+            raise ValueError("the recording has no more model replies")
+        rec = self._replies[self.used]
+        self.used += 1
+        return {"choices": [{"message": rec["message"]}], "usage": rec.get("usage")}

@@ -115,31 +115,39 @@ svg{width:100%;height:auto;margin:0 0 20px;border:1px solid var(--line);border-r
 
 
 def _graph(records: list[CallRecord]) -> str:
+    """Calls down the left, status on the right, and arcs in a gutter between them from the call a flagged value came
+    from to the call that tried to use it (solid when blocked, dashed otherwise)."""
     if not records:
         return ""
-    row, w = 34, 880
-    h = 20 + row * len(records)
-    pos = {r.call: 20 + row * i for i, r in enumerate(records)}
-    parts = [f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Data-flow graph between tool calls">']
+    row, w, gx = 34, 880, 470
+    h = 24 + row * len(records)
+    pos = {r.call: 22 + row * i for i, r in enumerate(records)}
     colors = {"allow": "var(--allow)", "approve": "var(--appr)", "deny": "var(--deny)"}
+    parts = [
+        f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Data-flow graph between tool calls">',
+        '<defs><marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">'
+        '<path d="M0,0 L8,4 L0,8 z" fill="context-stroke"/></marker></defs>',
+    ]
     for i, r in enumerate(records):
         y = pos[r.call]
         c = colors[VERDICT_CLASS[r.verdict]]
         parts.append(
-            f'<circle cx="24" cy="{y}" r="7" fill="{c}"/><text x="40" y="{y + 5}" font-size="13" fill="currentColor" '
+            f'<circle cx="22" cy="{y}" r="7" fill="{c}"/><text x="38" y="{y + 5}" font-size="13" fill="currentColor" '
             f'font-family="ui-monospace,Menlo,monospace">{html.escape(r.call)}  {html.escape(r.tool)}</text>'
-        )
-        parts.append(
             f'<text x="{w - 12}" y="{y + 5}" font-size="12" text-anchor="end" fill="{c}">{html.escape(status(r))}</text>'
+            f'<circle cx="{gx}" cy="{y}" r="3.5" fill="{c}"/>'
         )
+        seen: set[str] = set()
         for hit in r.rules:
-            for s in hit.get("sources", []):
-                if s["call"] in pos:
-                    y0 = pos[s["call"]]
-                    bend = 330 + 60 * ((i * 7 + y0) % 4)
+            for src in hit.get("sources", []):
+                if src["call"] in pos and src["call"] not in seen:
+                    seen.add(src["call"])
+                    y0 = pos[src["call"]]
+                    bend = gx + 30 + 12 * min(6, abs(i - list(pos).index(src["call"])))
+                    dash = "" if r.verdict == "DENY" else ' stroke-dasharray="5 3"'
                     parts.append(
-                        f'<path d="M 31 {y0} C {bend} {y0}, {bend} {y}, 31 {y}" fill="none" stroke="{c}" stroke-width="1.6" '
-                        f'stroke-dasharray="{"" if r.verdict == "DENY" else "4 3"}" opacity=".8"/>'
+                        f'<path d="M {gx} {y0} C {bend} {y0}, {bend} {y}, {gx + 4} {y}" fill="none" stroke="{c}" '
+                        f'stroke-width="1.8"{dash} marker-end="url(#ah)" style="color:{c}"/>'
                     )
     parts.append("</svg>")
     return "".join(parts)
