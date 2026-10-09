@@ -1,0 +1,45 @@
+{
+  "environment": {
+    "mcp_sdk": "2.3.0",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.12.15"
+  },
+  "files": {
+    "eval/PROTOCOL.md": "e523d6d72042e2cfad9f0e03687ddff6b0d308c64a71430fffd94c78a1f5df52",
+    "examples/policies/workspace.toml": "2556393404876548dcdeb64cc1a313b93c367be953a268989285f09aa32c037e",
+    "src/mcp_weir/__init__.py": "394fe7c4603af530b356da77b061c57ee1a33fd3a1c2509ab70c9e6138824c7c",
+    "src/mcp_weir/__main__.py": "6d8b7d7846a845059d7a3107143f11131f63c5511d669b44085b15ec5e3d2279",
+    "src/mcp_weir/cli.py": "bbb9dddcda2c6bd3ba431a411fe0fdfc1cb821fca4606a9d458b3b076d38dab0",
+    "src/mcp_weir/decision.py": "92ca8168007ece724906c37e40ef735689f5e179078132f07f7dc8d7f0c34140",
+    "src/mcp_weir/destinations.py": "7837ff336254c0e7d3e3e674c35e14376b52cb5a410208cd26d96801808c39ac",
+    "src/mcp_weir/gateway.py": "bd58a0430253704adbae0c8343efe547c18f46bc927525cafa68d8aab0069715",
+    "src/mcp_weir/labels.py": "dfd3793e62083d6bf1866522c18abf286f8b2eae0612b3d96c85551a6140d869",
+    "src/mcp_weir/pinning.py": "6ad5aecd24cc27bf5daacd3d4b279e4db8ab4c98f5e7a7d51679a871478baaa2",
+    "src/mcp_weir/policy.py": "bf9220dd2e96d3e3c8d3124d76b70fa20cadfb7db1af448485945875ecdd1795",
+    "src/mcp_weir/report.py": "27675dda4e18392f9fccd64a7cb0970bcbf8bbf3757ccf159520f9e35a16375b",
+    "src/mcp_weir/server.py": "caf2878481be45ce0346c63e9beb57043823776163c181782b6b6593a9900286",
+    "src/mcp_weir/session.py": "3b716aaebeb3663bd3cafa5b8bc30a4748411aa44b9c5c779a71c79ee1bfe5ff",
+    "src/mcp_weir/store.py": "a1f56fc5ac9b8934694ff20df6b437cde6d1138413ff0bcc73a8886c7529c362",
+    "src/mcp_weir/tracker.py": "2d4e4e6f1b1b643741a5e31fff2f5f97828a7fcd37d7c94302aa81046dfc0964",
+    "src/mcp_weir/upstream.py": "c2ac1a9491d78e2d367d4c358b9609a18e09129263750c3684bdab9a0a19475e",
+    "src/weir_eval/agents.py": "f0c4c63b9ae861a00e246554ca63505f358812a8922419c5c8db3feba1e40afd",
+    "src/weir_eval/analysis.py": "5cd6aea53d9d6eb6f4acefd0cd92ff8c173e4eb2cbf0cf011f3e3b9f9e4a6d60",
+    "src/weir_eval/bench.py": "10141a1805e7b741becbebb49445517469e4ca867d4989653d384eec445ded2d",
+    "src/weir_eval/equivalence.py": "42ec91ead7e0a6df868ce8b332d3574985a9da04e11a7f874a28196fb5f13cf1",
+    "src/weir_eval/freeze.py": "ad01172cec01dcd452aab9f427da77124317602a30e9dbcbfb1d8b2043a59735",
+    "src/weir_eval/oracles.py": "ba0fad0035b7b57a1d5f0a0d8bcf1d99163bc041ebf3d712368938fe08b003ca",
+    "src/weir_eval/run.py": "11189f9c90c643b157bea6f0ce60af6b6ae34b4ad17b76efeed386687ec04875",
+    "src/weir_eval/runner.py": "4459703dffc1b28d9a9764d2bf50532fed45ee4011fa1716e6c5b91f5c1d3aeb",
+    "src/weir_eval/scenarios.py": "4080482d80c6f3b0ac313cbbfcf9e3ec695154ce80d9a29083e059e493065a02",
+    "src/weir_eval/transforms.py": "8ce7c4f06a14378f5029c952f92c81786f14982b5995b4d46b1fd2b8d7566c7b",
+    "src/weir_testbed/__init__.py": "00ea312c2351be07d961d87728fcaf6a55a276d03deaa6cdf325c4107167ddec",
+    "src/weir_testbed/sdk_servers.py": "2db7fbc405ec0992c3b4d67a648a72ae9d675580533a0c35e824900b4a91c55b",
+    "src/weir_testbed/servers.py": "44b41e2155373deb05e246f995d4e558c5be3b48420a2454bcc67570fe10d341",
+    "src/weir_testbed/world.py": "ac24b6e9a2f826f6ea2bbb4836754b30c57b91b814f21c35305dd74a2ffa221c"
+  },
+  "root_sha256": "0aeef30b283745c1e5042cee4acad3d51b152c706d1186d4e87b3e287e573ec3",
+  "suites": {
+    "dev": "262422884221b225da8247cc4974043d8081b1645caaf2a04c2e3af11fe84bb2",
+    "test": "5ff673c6ea1306d6e41044e45d92f64487d89e7083f5e611f5cd0c40b88b0a86"
+  }
+}
