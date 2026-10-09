@@ -16,8 +16,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e '.[test,interop,dev]'
-      - run: ruff check src tests eval
-      - run: ruff format --check src tests eval
+      - run: ruff check src tests eval examples
+      - run: ruff format --check src tests eval examples
       - run: mypy
 
   tests:

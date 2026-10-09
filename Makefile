@@ -5,7 +5,7 @@ setup:
 test:
 	pytest -q
 lint:
-	ruff check src tests eval && ruff format --check src tests eval
+	ruff check src tests eval examples && ruff format --check src tests eval examples
 types:
 	mypy
 check: lint types test
