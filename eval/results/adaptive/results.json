@@ -1076,5 +1076,103 @@
    1.0,
    1.0
   ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A0",
+  "mode": "none",
+  "goal": [
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A1",
+  "mode": "strict",
+  "goal": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A2",
+  "mode": "careless",
+  "goal": [
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A3",
+  "mode": "strict",
+  "goal": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A3",
+  "mode": "careless",
+  "goal": [
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A3d",
+  "mode": "strict",
+  "goal": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "id": "AD12",
+  "category": "evasion of the decoders",
+  "title": "base64 wrapped in 8-character lines (the tracker decodes only runs of 12 or more base64 characters)",
+  "arm": "A3d",
+  "mode": "careless",
+  "goal": [
+   0.0,
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
  }
 ]
