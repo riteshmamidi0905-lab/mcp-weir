@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 504" role="img" aria-labelledby="t d" font-family="Inter,Helvetica,Arial,sans-serif">
+<title id="t">Attacks that reached their goal, by gateway arm and by how careful the human is</title>
+<desc id="d">Held-out scripted run, 1650 attacks per cell. Bars show the share of attacks that reached their goal.</desc>
+<rect width="980" height="504" fill="#ffffff"/>
+<text x="24" y="38" font-size="22" font-weight="700" fill="#17181a">Attacks that reached their goal</text>
+<text x="24" y="62" font-size="14" fill="#5b6068">held-out run, scripted attacker that follows every planted instruction, 1,650 attacks per cell</text>
+<rect x="290" y="82" width="12" height="12" fill="#0d6b3a"/><text x="308" y="92" font-size="13" fill="#17181a">a careful human is asked</text><rect x="490" y="82" width="12" height="12" fill="#a11d1d"/><text x="508" y="92" font-size="13" fill="#17181a">the human approves everything</text>
+<text x="24" y="128" font-size="15" font-weight="600" fill="#17181a">A0</text><text x="24" y="146" font-size="12" fill="#5b6068">no gateway</text>
+<rect x="290" y="108" width="520" height="20" fill="#eef0f3"/><rect x="290" y="108" width="520.0" height="20" fill="#5b6068"/><text x="820" y="123" font-size="14" fill="#17181a">100.0%</text>
+<text x="24" y="192" font-size="15" font-weight="600" fill="#17181a">A1</text><text x="24" y="210" font-size="12" fill="#5b6068">static approval gates</text>
+<rect x="290" y="172" width="520" height="20" fill="#eef0f3"/><rect x="290" y="172" width="75.6" height="20" fill="#0d6b3a"/><text x="820" y="187" font-size="14" fill="#17181a">14.5%</text>
+<rect x="290" y="198" width="520" height="20" fill="#eef0f3"/><rect x="290" y="198" width="520.0" height="20" fill="#a11d1d"/><text x="820" y="213" font-size="14" fill="#17181a">100.0%</text>
+<text x="24" y="256" font-size="15" font-weight="600" fill="#17181a">A2</text><text x="24" y="274" font-size="12" fill="#5b6068">value tier</text>
+<rect x="290" y="236" width="520" height="20" fill="#eef0f3"/><rect x="290" y="236" width="100.8" height="20" fill="#0d6b3a"/><text x="820" y="251" font-size="14" fill="#17181a">19.4%</text>
+<rect x="290" y="262" width="520" height="20" fill="#eef0f3"/><rect x="290" y="262" width="232.6" height="20" fill="#a11d1d"/><text x="820" y="277" font-size="14" fill="#17181a">44.7%</text>
+<text x="24" y="320" font-size="15" font-weight="600" fill="#17181a">A3s</text><text x="24" y="338" font-size="12" fill="#5b6068">session tier only</text>
+<rect x="290" y="300" width="520" height="20" fill="#eef0f3"/><rect x="290" y="300" width="66.2" height="20" fill="#0d6b3a"/><text x="820" y="315" font-size="14" fill="#17181a">12.7%</text>
+<rect x="290" y="326" width="520" height="20" fill="#eef0f3"/><rect x="290" y="326" width="520.0" height="20" fill="#a11d1d"/><text x="820" y="341" font-size="14" fill="#17181a">100.0%</text>
+<text x="24" y="384" font-size="15" font-weight="600" fill="#17181a">A3</text><text x="24" y="402" font-size="12" fill="#5b6068">value + session</text>
+<rect x="290" y="364" width="520" height="20" fill="#eef0f3"/><rect x="290" y="364" width="37.8" height="20" fill="#0d6b3a"/><text x="820" y="379" font-size="14" fill="#17181a">7.3%</text>
+<rect x="290" y="390" width="520" height="20" fill="#eef0f3"/><rect x="290" y="390" width="232.6" height="20" fill="#a11d1d"/><text x="820" y="405" font-size="14" fill="#17181a">44.7%</text>
+<text x="24" y="448" font-size="15" font-weight="600" fill="#17181a">A3d</text><text x="24" y="466" font-size="12" fill="#5b6068">value + session, session rules deny</text>
+<rect x="290" y="428" width="520" height="20" fill="#eef0f3"/><rect x="290" y="428" width="37.8" height="20" fill="#0d6b3a"/><text x="820" y="443" font-size="14" fill="#17181a">7.3%</text>
+<rect x="290" y="454" width="520" height="20" fill="#eef0f3"/><rect x="290" y="454" width="66.2" height="20" fill="#a11d1d"/><text x="820" y="469" font-size="14" fill="#17181a">12.7%</text>
+<line x1="290" y1="100" x2="290" y2="486" stroke="#d9dbdf"/></svg>
