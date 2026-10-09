@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -73,7 +74,8 @@ def show(title: str, trace: Trace, world: World, scn: Scenario, tty: bool) -> bo
             tag = paint("held for a human", AMBER, tty)
         else:
             tag = paint("blocked", AMBER, tty)
-        print(f"  {i}. {c.tool:<22} {args:<62} {tag}  {paint(' '.join(c.codes), DIM, tty)}")
+        shown = " ".join(x for x in c.codes if x != "R-APPROVAL-DENIED")
+        print(f"  {i}. {c.tool:<21} {args:<52} {tag}  {paint(shown, DIM, tty)}")
     won = oracles.attack_success(scn, world.effects, trace.final)
     print(
         "  "
@@ -83,7 +85,7 @@ def show(title: str, trace: Trace, world: World, scn: Scenario, tty: bool) -> bo
 
 
 async def main_async(a: argparse.Namespace) -> int:
-    tty = sys.stdout.isatty()
+    tty = sys.stdout.isatty() or bool(os.environ.get("FORCE_COLOR"))
     fam, var, order, delivery, seed = (a.scenario or "F1:value:untrusted_first:web:1").split(":")
     scn = attack(fam, var, order, delivery, int(seed), "demo")
     out = Path(a.out)
