@@ -88,7 +88,7 @@ def test_readme_numbers_come_from_the_recorded_results():
     )  # the 741 ms is the pre-fix figure, recorded in docs/red-team.md
     assert "741 ms" in (ROOT / "docs" / "red-team.md").read_text()
     assert (
-        f"{h['equivalence']['agree']} held-out runs" in README
+        f"{h['equivalence']['agree']} sampled held-out runs" in README
         and h["equivalence"]["agree"] == h["equivalence"]["total"]
     )
 
@@ -112,7 +112,7 @@ def test_readme_realmodel_prose_numbers_come_from_the_records():
     assert all(r["family"] == "F4" for r in atk if r["arm"] == "A3" and r["mode"] == "strict" and r["attack_success"])
     ben = [r for r in recs if r["kind"] == "benign" and r["arm"] == "A0" and r["mode"] == "none"]
     assert round(100 * sum(not r["benign_ok"] for r in ben) / len(ben)) == 23
-    for frag in ("62%", "86% each", "14%", "27%", "23%", "indistinguishable"):
+    for frag in ("62%", "86% each", "14%", "27%", "23%", "cannot be distinguished by this run"):
         assert frag in README, frag
 
 
@@ -152,7 +152,7 @@ def test_first_stop_and_transformation_claims_are_recomputed_from_the_raw_record
 
     assert rate("A3s", "careless") == 100.0 and round(rate("A2", "careless"), 1) == 44.7
     assert rate("A3s", "strict") < rate("A2", "strict")  # with a careful human the session tier alone leaves less
-    assert "A3s: 100% of attacks" in README and "A2: 44.7%" in README
+    assert "A3s leaves 100.0%, A2 44.7%" in README
 
     # S7: the tracker alone, approve-everything human, e-mail exfiltration by transformation
     def f1(variant):
@@ -177,6 +177,95 @@ def test_first_stop_and_transformation_claims_are_recomputed_from_the_raw_record
     assert not any(
         r["attack_success"] for r in f1_a3
     )  # "the same attacks were all held by the session rules with a careful human"
+
+
+def test_first_stop_accounting_is_disclosed_and_recomputed_from_the_raw_records():
+    """The co-firing rules, the oracle-declined share and the hard denials are quoted in README, evaluation, claims and limitations."""
+    recs = records("test-scripted/runs.jsonl")
+    a3 = [
+        r for r in recs if r["kind"] == "attack" and r["family"] != "F8" and r["arm"] == "A3" and r["mode"] == "strict"
+    ]
+    n = len(a3)
+    stopped = [r for r in a3 if r.get("stopped_by")]
+    fired = {}
+    for r in stopped:
+        for c in set(r["stopped_by"]):
+            fired[c] = fired.get(c, 0) + 1
+    declined = sum("R-APPROVAL-DENIED" in r["stopped_by"] for r in stopped)
+    hard = len(stopped) - declined
+    assert (n, fired["R-FLOW-CONF"], fired["R-TRIFECTA"], declined, hard) == (1650, 464, 660, 1086, 444)
+    ev = (ROOT / "docs" / "evaluation.md").read_text()
+    cl = (ROOT / "docs" / "claims.md").read_text()
+    lim = (ROOT / "docs" / "limitations.md").read_text()
+    for doc, frags in (
+        (
+            README,
+            (
+                "28.1%",
+                "40.0%",
+                "65.8% (1,086 of 1,650)",
+                "26.9% (444)",
+                "not a causal attribution",
+                "predicted that the tracker would lose to transformations (E4)",
+            ),
+        ),
+        (
+            ev,
+            (
+                "28.1% (464)",
+                "40.0% (660)",
+                "65.8% (1,086 of 1,650)",
+                "26.9% (444)",
+                "not a causal attribution",
+                "did not predict how much of the stopping",
+            ),
+        ),
+        (
+            cl,
+            (
+                "28.1%",
+                "40.0%",
+                "65.8% (1086 of 1650)".replace("1086 of 1650", "1,086 of 1,650"),
+                "26.9% (444)",
+                "not a causal attribution",
+            ),
+        ),
+        (lim, ("28.1%", "40.0%", "65.8%", "26.9%", "not a causal attribution")),
+    ):
+        for frag in frags:
+            assert frag in doc, frag
+
+
+def test_the_answer_channel_is_stated_as_by_construction_and_without_universal_claims():
+    for name in ("README.md", "docs/limitations.md", "docs/claims.md", "docs/evaluation.md"):
+        text = (ROOT / name).read_text()
+        assert "by construction" in text, name
+    for name in ("README.md", "docs/limitations.md", "docs/claims.md", "docs/evaluation.md", "docs/architecture.md"):
+        text = (ROOT / name).read_text().lower()
+        for banned in (
+            "no gateway at this boundary can",
+            "no gateway can",
+            "what no gateway",
+            "tracker alone",
+            "i expected the tracker",
+            "the surprise",
+        ):
+            assert banned not in text, (name, banned)
+
+
+def test_mt02_is_described_with_the_right_denominators():
+    assert "all seven runtime controls held in all 240 agent-mode task runs" in README
+    assert (
+        "which ran six times" in README
+        and "in all six runs the model called that read tool and printed the secret in its answer" in README
+    )
+    assert "not a Weir result" in README
+
+
+def test_summary_only_microbenchmark_claims_are_classified_as_such():
+    cl = (ROOT / "docs" / "claims.md").read_text()
+    assert "except** the microbenchmark summaries" in cl and "SUMMARY-ONLY" in cl and "741 ms" in cl
+    assert "every headline number" not in cl.lower()
 
 
 def test_the_spec_criterion_that_was_missed_is_reported_as_missed():

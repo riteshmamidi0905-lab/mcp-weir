@@ -33,16 +33,16 @@ def attacks_chart() -> str:
     h = 120 + rowh * len(ARMS)
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" role="img" aria-labelledby="t d" font-family="Inter,Helvetica,Arial,sans-serif">',
-        '<title id="t">Attacks that reached their goal, by gateway arm and by how careful the human is</title>',
-        f'<desc id="d">Held-out scripted run, {C["A0/none"]["attacks"]} attacks per cell. Bars show the share of attacks that reached their goal.</desc>',
+        '<title id="t">Attacks that reached their goal, by gateway arm and by how careful the simulated approver is</title>',
+        f'<desc id="d">Held-out scripted run, {C["A0/none"]["attacks"]} attacks per cell, with simulated (oracle) approvers. Bars show the share of attacks that reached their goal.</desc>',
         f'<rect width="{w}" height="{h}" fill="{BG}"/>',
         f'<text x="24" y="38" font-size="22" font-weight="700" fill="{INK}">Attacks that reached their goal</text>',
-        f'<text x="24" y="62" font-size="14" fill="{MUT}">held-out run, scripted attacker that follows every planted instruction, {C["A0/none"]["attacks"]:,} attacks per cell</text>',
+        f'<text x="24" y="62" font-size="14" fill="{MUT}">held-out run, scripted attacker that follows every planted instruction, simulated approvers, {C["A0/none"]["attacks"]:,} attacks per cell</text>',
     ]
     y0 = 96
     out.append(
-        f'<rect x="{left}" y="{y0 - 14}" width="12" height="12" fill="{GOOD}"/><text x="{left + 18}" y="{y0 - 4}" font-size="13" fill="{INK}">a careful human is asked</text>'
-        f'<rect x="{left + 200}" y="{y0 - 14}" width="12" height="12" fill="{BAD}"/><text x="{left + 218}" y="{y0 - 4}" font-size="13" fill="{INK}">the human approves everything</text>'
+        f'<rect x="{left}" y="{y0 - 14}" width="12" height="12" fill="{GOOD}"/><text x="{left + 18}" y="{y0 - 4}" font-size="13" fill="{INK}">a careful simulated approver</text>'
+        f'<rect x="{left + 230}" y="{y0 - 14}" width="12" height="12" fill="{BAD}"/><text x="{left + 248}" y="{y0 - 4}" font-size="13" fill="{INK}">a simulated approver who approves everything</text>'
     )
     for i, (arm, name) in enumerate(ARMS):
         y = y0 + 12 + i * rowh
@@ -68,11 +68,11 @@ def burden_chart() -> str:
     mx = max(C[f"{a}/strict"]["approvals_per_benign_task"] for a, _ in arms)
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" role="img" aria-labelledby="t d" font-family="Inter,Helvetica,Arial,sans-serif">',
-        '<title id="t">Approvals a human is asked for, per legitimate task</title>',
+        '<title id="t">Approvals a careful simulated approver is asked for, per legitimate task</title>',
         f'<desc id="d">{C["A1/strict"]["benign"]} benign tasks per arm, mean approvals requested per task.</desc>',
         f'<rect width="{w}" height="{h}" fill="{BG}"/>',
         f'<text x="24" y="38" font-size="22" font-weight="700" fill="{INK}">What it costs a user who only does legitimate work</text>',
-        f'<text x="24" y="62" font-size="14" fill="{MUT}">mean approvals requested per benign task, {C["A1/strict"]["benign"]} tasks per arm (the user did ask for each one)</text>',
+        f'<text x="24" y="62" font-size="14" fill="{MUT}">mean approvals requested per benign task (careful simulated approver), {C["A1/strict"]["benign"]} tasks per arm (the user did ask for each one)</text>',
     ]
     for i, (arm, name) in enumerate(arms):
         y = 90 + i * rowh

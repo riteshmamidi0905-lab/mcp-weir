@@ -37,10 +37,10 @@ Tested against: the official MCP Python SDK client (2.3.0, both handshakes) and 
 ```bash
 python -m weir_eval.freeze verify                                     # the frozen files are intact
 python -m weir_eval.run --suite smoke --out /tmp/smoke                # seconds; scripted agents only
-python -m weir_eval.run --suite dev --out /tmp/dev --rugpull          # ~3 min, ~16,000 runs
+python -m weir_eval.run --suite dev --out /tmp/dev --rugpull          # ~3 min, 14,510 runs (5 development seeds)
 python -m weir_eval.equivalence --suite dev --n 24 --arms A3,A1       # in-process harness vs the real stdio gateway
 python -m weir_eval.bench                                             # overhead
 python eval/make_tables.py eval/results/test-scripted/runs.jsonl.gz   # the tables in docs/evaluation.md
 ```
 
-The **held-out** suite (seeds 100-109) was run once under the freeze recorded in `eval/FREEZE.json`; `weir_eval.run --suite test` refuses to run again without `--rerun` (which labels the result "not held out"). The real-model run needs `llama-server` with the exact model named in `eval/PROTOCOL.md`.
+The **held-out** suite (seeds 100-109: new instances from the same generator, not new attack classes) was run once under the freeze recorded in `eval/FREEZE.json`; `weir_eval.run --suite test` refuses to run again without `--rerun` (which labels the result "not held out"). The check and the lock file are advisory: the lock is an ordinary file and the freeze can be regenerated, so they make a repeat visible, they do not prevent it. The real-model run needs `llama-server` with the exact model named in `eval/PROTOCOL.md`.

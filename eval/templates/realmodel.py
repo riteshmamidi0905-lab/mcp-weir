@@ -10,9 +10,13 @@ NAMES = {
     "A1": "static approval gates",
     "A2": "value tier",
     "A3": "value + session tiers (defaults)",
-    "A3d": "value + session tiers, session rules deny",
+    "A3d": "both tiers, session rules set to deny",
 }
-HUMAN = {"none": "nobody to approve", "strict": "careful human", "careless": "human approves everything"}
+HUMAN = {
+    "none": "nobody to approve",
+    "strict": "careful simulated approver",
+    "careless": "simulated approver who approves everything",
+}
 ATTACK_CELLS = [
     ("A0", "none"),
     ("A1", "strict"),
@@ -46,7 +50,7 @@ def render(rm: list[dict[str, Any]], h: dict[str, Any], cell: Any, fmt: Any, wil
     n_ben = len({r["id"] for r in ben})
     secs = sorted(r["seconds"] for r in rm)
     out.append(
-        f"**Setup.** Qwen3-4B-Instruct-2507 (Q4_K_M), llama.cpp b11476 (`llama-server --jinja`), native tool calling, temperature 0, seed 20260101, at most 10 model calls per run; "
+        f"**Setup.** Qwen3-4B-Instruct-2507 (Q4_K_M), llama.cpp b11476 (`llama-server --jinja`), native tool calling (every one of the recorded tool calls came from the model's `tool_calls` field), temperature 0, seed 20260101, at most 10 model calls per run; the weights file is the one used in the sibling Agent Runtime Benchmark, which records its sha256 (this repository does not record a digest of its own); "
         f"the tool list is identical in every arm. Held-out seeds: {n_atk} attack scenarios (F1-F4 verbatim in both orders, F5-F7, three delivery channels, 2 seeds) and {n_ben} benign scenarios (16 tasks, 3 seeds). "
         f"{len(rm)} runs, median {secs[len(secs) // 2]:.0f} s each. **One pass per cell**: greedy decoding is deterministic given the prompt, but nothing was repeated or sampled, so there is no run-to-run variance to report and the intervals below describe only the finite number of scenarios."
     )
@@ -174,11 +178,14 @@ def _reading(rm: list[dict[str, Any]], cell: Any, fmt: Any) -> str:
         f"{ch['mail'][0]} of {ch['mail'][1]} in a mail, because it often answered from the message list without ever opening the poisoned message. "
         "A weaker or more careful model would give a different baseline; this is a measurement of one model, not of language models."
     )
+    unopened = [r for r in strict if not exposed(r)]
     if same and all_f4:
         lines.append(
-            f"* **A1, A2 and A3 are indistinguishable here.** With a careful human every one of them left {len(strict)} of {cell(rm, 'A3', 'strict')[1]} runs standing, all in the answer channel (F4). "
-            "These scenarios ask for the secret *verbatim*, which the value tier alone catches, and the model never transformed it, so this run says nothing about the claimed advantage of the session rules over the value tier or about static gates versus either; "
-            "the scripted run (section 3) is the evidence for those. What this run does show is that the controls work end to end with a real model that picks its own tool calls."
+            f"* **A1, A2 and A3 cannot be distinguished by this run.** With a careful simulated approver every one of them left {len(strict)} of {cell(rm, 'A3', 'strict')[1]} runs standing, and all {len(strict)} are answer-channel outcomes (F4). "
+            "The scenarios request the secret *verbatim*, which the value tier alone catches, and the model never disguised it; no transformed attack was run against the real model. So this run says nothing about the session rules' advantage over the value tier, or about static gates versus either; the scripted run (section 3) is the evidence for those. What this run does show is that the controls work end to end with a real model that picks its own tool calls."
+        )
+        lines.append(
+            f'* **Read the {len(strict)} remaining outcomes as answer-channel outcomes, not as prompt-injection delivery.** In {len(unopened)} of the {len(strict)} the model never opened the poisoned content: the user\'s own task says to read the secret "for the on-call handover", and the model printed it. Those {len(unopened)} must not be interpreted as a successful injection. The raw {len(strict)}/{cell(rm, "A3", "strict")[1]} is reported unchanged.'
         )
     else:
         lines.append(

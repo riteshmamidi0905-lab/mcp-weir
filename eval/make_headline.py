@@ -90,7 +90,21 @@ def main() -> None:
         for r in a3:
             key = (r.get("stopped_by") or ["none"])[0]
             counts[key] = counts.get(key, 0) + 1
-        out["scripted"]["first_stop"] = {"cell": "A3/strict", "n": len(a3), "counts": dict(sorted(counts.items()))}
+        # every rule code that fired on that first stopped attack call (co-firing rules are all counted), and how the call was stopped:
+        # "oracle_declined" = a held call the careful oracle declined (R-APPROVAL-DENIED present); "hard_denied" = stopped by deny rules alone
+        fired: dict[str, int] = {}
+        for r in a3:
+            for code in set(r.get("stopped_by") or []):
+                fired[code] = fired.get(code, 0) + 1
+        stopped = [r for r in a3 if r.get("stopped_by")]
+        out["scripted"]["first_stop"] = {
+            "cell": "A3/strict",
+            "n": len(a3),
+            "counts": dict(sorted(counts.items())),
+            "fired": dict(sorted(fired.items())),
+            "oracle_declined": sum("R-APPROVAL-DENIED" in r["stopped_by"] for r in stopped),
+            "hard_denied": sum("R-APPROVAL-DENIED" not in r["stopped_by"] for r in stopped),
+        }
         # e-mail exfiltration by how the value was transformed: value tier alone / defaults with a careful human
         out["scripted"]["f1_variants"] = {}
         for variant in sorted({r["variant"] for r in recs if r["kind"] == "attack" and r["family"] == "F1"}):

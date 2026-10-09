@@ -1,6 +1,6 @@
 ## Headline
 
-| Arm | careful human: attacks that reach their goal | careful human: approvals per benign task | careful human: benign tasks completed | human approves everything: attacks | nobody to approve: benign tasks completed |
+| Arm | careful simulated approver: attacks that reach their goal | careful simulated approver: approvals per benign task | careful simulated approver: benign tasks completed | simulated approver who approves everything: attacks | nobody to approve: benign tasks completed |
 |---|---|---|---|---|---|
 | A0 no gateway | 100.0% (1650/1650) | 0.00 | 100.0% (160/160) | 100.0% (1650/1650) | 100.0% (160/160) |
 | A1 static approval gates | 14.5% (240/1650) | 1.06 | 100.0% (160/160) | 100.0% (1650/1650) | 6.2% (10/160) |

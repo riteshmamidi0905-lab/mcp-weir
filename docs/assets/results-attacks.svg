@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 504" role="img" aria-labelledby="t d" font-family="Inter,Helvetica,Arial,sans-serif">
-<title id="t">Attacks that reached their goal, by gateway arm and by how careful the human is</title>
-<desc id="d">Held-out scripted run, 1650 attacks per cell. Bars show the share of attacks that reached their goal.</desc>
+<title id="t">Attacks that reached their goal, by gateway arm and by how careful the simulated approver is</title>
+<desc id="d">Held-out scripted run, 1650 attacks per cell, with simulated (oracle) approvers. Bars show the share of attacks that reached their goal.</desc>
 <rect width="980" height="504" fill="#ffffff"/>
 <text x="24" y="38" font-size="22" font-weight="700" fill="#17181a">Attacks that reached their goal</text>
-<text x="24" y="62" font-size="14" fill="#5b6068">held-out run, scripted attacker that follows every planted instruction, 1,650 attacks per cell</text>
-<rect x="290" y="82" width="12" height="12" fill="#0d6b3a"/><text x="308" y="92" font-size="13" fill="#17181a">a careful human is asked</text><rect x="490" y="82" width="12" height="12" fill="#a11d1d"/><text x="508" y="92" font-size="13" fill="#17181a">the human approves everything</text>
+<text x="24" y="62" font-size="14" fill="#5b6068">held-out run, scripted attacker that follows every planted instruction, simulated approvers, 1,650 attacks per cell</text>
+<rect x="290" y="82" width="12" height="12" fill="#0d6b3a"/><text x="308" y="92" font-size="13" fill="#17181a">a careful simulated approver</text><rect x="520" y="82" width="12" height="12" fill="#a11d1d"/><text x="538" y="92" font-size="13" fill="#17181a">a simulated approver who approves everything</text>
 <text x="24" y="128" font-size="15" font-weight="600" fill="#17181a">A0</text><text x="24" y="146" font-size="12" fill="#5b6068">no gateway</text>
 <rect x="290" y="108" width="520" height="20" fill="#eef0f3"/><rect x="290" y="108" width="520.0" height="20" fill="#5b6068"/><text x="820" y="123" font-size="14" fill="#17181a">100.0%</text>
 <text x="24" y="192" font-size="15" font-weight="600" fill="#17181a">A1</text><text x="24" y="210" font-size="12" fill="#5b6068">static approval gates</text>

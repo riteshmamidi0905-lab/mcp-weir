@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" role="img" aria-labelledby="t d" font-family="Inter,Helvetica,Arial,sans-serif">
-<title id="t">Approvals a human is asked for, per legitimate task</title>
+<title id="t">Approvals a careful simulated approver is asked for, per legitimate task</title>
 <desc id="d">160 benign tasks per arm, mean approvals requested per task.</desc>
 <rect width="980" height="340" fill="#ffffff"/>
 <text x="24" y="38" font-size="22" font-weight="700" fill="#17181a">What it costs a user who only does legitimate work</text>
-<text x="24" y="62" font-size="14" fill="#5b6068">mean approvals requested per benign task, 160 tasks per arm (the user did ask for each one)</text>
+<text x="24" y="62" font-size="14" fill="#5b6068">mean approvals requested per benign task (careful simulated approver), 160 tasks per arm (the user did ask for each one)</text>
 <text x="24" y="105" font-size="15" font-weight="600" fill="#17181a">A1</text><text x="70" y="105" font-size="12" fill="#5b6068">static approval gates</text><rect x="290" y="90" width="520" height="20" fill="#eef0f3"/><rect x="290" y="90" width="472.7" height="20" fill="#a11d1d"/><text x="820" y="105" font-size="14" fill="#17181a">1.06</text>
 <text x="24" y="151" font-size="15" font-weight="600" fill="#17181a">A2</text><text x="70" y="151" font-size="12" fill="#5b6068">value tier</text><rect x="290" y="136" width="520" height="20" fill="#eef0f3"/><rect x="290" y="136" width="55.6" height="20" fill="#0d6b3a"/><text x="820" y="151" font-size="14" fill="#17181a">0.12</text>
 <text x="24" y="197" font-size="15" font-weight="600" fill="#17181a">A3s</text><text x="70" y="197" font-size="12" fill="#5b6068">session tier only</text><rect x="290" y="182" width="520" height="20" fill="#eef0f3"/><rect x="290" y="182" width="27.8" height="20" fill="#0d6b3a"/><text x="820" y="197" font-size="14" fill="#17181a">0.06</text>

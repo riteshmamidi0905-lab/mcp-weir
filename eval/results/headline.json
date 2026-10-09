@@ -1628,7 +1628,16 @@
     "R-UNTRUSTED-READ": 780,
     "none": 120
    },
-   "n": 1650
+   "fired": {
+    "R-APPROVAL-DENIED": 1086,
+    "R-DEST-UNTRUSTED": 480,
+    "R-FLOW-CONF": 464,
+    "R-TRIFECTA": 660,
+    "R-UNTRUSTED-READ": 780
+   },
+   "hard_denied": 444,
+   "n": 1650,
+   "oracle_declined": 1086
   },
   "rug_pull": {
    "A0": [
@@ -1661,8 +1670,8 @@
  "tests": {
   "date": "2026-10-09",
   "failed": 0,
-  "passed": 338,
+  "passed": 342,
   "python": "3.12.15",
-  "summary": "338 passed in 20.22s"
+  "summary": "342 passed in 20.13s"
  }
 }

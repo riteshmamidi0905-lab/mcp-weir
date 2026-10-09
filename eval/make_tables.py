@@ -39,7 +39,7 @@ def short(rs: list[dict[str, Any]], key: str) -> str:
 
 def headline(recs: list[dict[str, Any]]) -> str:
     rows = [
-        "| Arm | careful human: attacks that reach their goal | careful human: approvals per benign task | careful human: benign tasks completed | human approves everything: attacks | nobody to approve: benign tasks completed |",
+        "| Arm | careful simulated approver: attacks that reach their goal | careful simulated approver: approvals per benign task | careful simulated approver: benign tasks completed | simulated approver who approves everything: attacks | nobody to approve: benign tasks completed |",
         "|---|---|---|---|---|---|",
     ]
     atk = [r for r in recs if r["kind"] == "attack" and r["family"] != "F8"]
