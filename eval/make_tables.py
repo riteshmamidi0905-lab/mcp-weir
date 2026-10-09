@@ -5,6 +5,7 @@ python eval/make_tables.py eval/results/test-scripted/runs.jsonl > eval/results/
 
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 from collections import Counter, defaultdict
@@ -18,7 +19,9 @@ ARMS = ["A0", "A1", "A2", "A3s", "A3", "A3d"]
 
 
 def load(path: str) -> list[dict[str, Any]]:
-    return [json.loads(x) for x in Path(path).read_text().splitlines() if x.strip()]
+    p = Path(path)
+    text = gzip.open(p, "rt").read() if p.suffix == ".gz" else p.read_text()  # noqa: SIM115
+    return [json.loads(x) for x in text.splitlines() if x.strip()]
 
 
 def pick(recs: list[dict[str, Any]], **kw: Any) -> list[dict[str, Any]]:
@@ -158,7 +161,7 @@ def flagged(recs: list[dict[str, Any]]) -> str:
     ben = [r for r in recs if r["kind"] == "benign"]
     for t in sorted(names):
 
-        def codes(arm: str) -> str:
+        def codes(arm: str, t: str = t) -> str:
             rs = [r for r in ben if r["arm"] == arm and r["mode"] == "none" and r["id"].split("-")[1] == t]
             cs = sorted({c for r in rs for c in r["codes"]})
             return ", ".join(cs) if cs else "-"
