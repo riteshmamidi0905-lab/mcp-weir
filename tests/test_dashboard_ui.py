@@ -84,6 +84,7 @@ def test_the_interface_in_a_real_browser(tmp_path):
             text=True,
             timeout=600,
         )
+    print(r.stdout)  # shown by `pytest -rP`: the CI log lists every browser test and the pass count
     if os.environ.get("WEIR_UI_LOG"):
         Path(os.environ["WEIR_UI_LOG"]).write_text(r.stdout + r.stderr)
     summary = "\n".join(line for line in r.stdout.splitlines() if line.lstrip().startswith(("✔", "✖")))

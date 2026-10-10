@@ -49,6 +49,10 @@ To look at the databases the existing demo writes: `python -m weir_eval.demo --o
 
 ![recorded data-flow relationships](assets/dashboard-provenance.png)
 
+![the rule inspector explaining why a rule fired on one call](assets/dashboard-rule.png)
+
+![the audit view after Verify chain](assets/dashboard-audit.png)
+
 **Rule inspector.** Click any rule chip. The table behind it (`src/weir_dashboard/rules.py`) restates `docs/policy.md` section 3 and the messages in `decision.py`; the configured action is read from the policy (or the gateway defaults if no file was passed); "seen here" counts come from your events. A test fails if a rule code appears in the gateway source but not in the table.
 
 **Words.** Weir's verdict names are ALLOW, APPROVE and DENY. The interface says HOLD for APPROVE (a person can decide) and DENY for DENY (blocked; an approval cannot override it). A call that was held and later ran after approval is shown as HOLD with "RAN AFTER APPROVAL". The gateway's own verdict name is in each call's details.

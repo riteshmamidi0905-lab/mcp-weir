@@ -101,7 +101,7 @@ main { flex: 1; padding: 22px 24px 28px; min-width: 0; outline: none; }
 .card-h h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); font-weight: 650; }
 .card-h h3.mono { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text); }
 .card-b { padding: 14px; }
-.card-b > * + * { margin-top: 10px; }
+.card-b > .big-status + *, .card-b > dl + p, .card-b > ul + p, .card-b > p + p, .card-b > p + .banner { margin-top: 10px; }
 .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-3); font-weight: 650; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .kpi { padding: 14px; display: grid; gap: 6px; align-content: start; }
