@@ -176,6 +176,13 @@ test('audit: VERIFY CHAIN re-checks the chain and the page says what the check i
   const t = await page.locator('main').innerText();
   assert.match(t, /CHAIN VERIFIED/); assert.match(t, /Latest event/); assert.match(t, /cannot show that events were not removed/);
   assert.match(t, /Events in chain/);
+  // regression: a button's re-render that arrives after the person has navigated away must not pull them back to the old view
+  await page.getByRole('button', { name: 'Verify chain' }).click();
+  await page.evaluate(() => { location.hash = '#/policy'; });
+  await page.waitForFunction(() => document.querySelector('main h2')?.textContent.trim() === 'Policy', null, { timeout: 8000 });
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator('main h2').first().innerText(), 'Policy', 'still on the page the person navigated to');
+  assert.equal(await page.evaluate(() => location.hash), '#/policy');
   await done(page);
 });
 

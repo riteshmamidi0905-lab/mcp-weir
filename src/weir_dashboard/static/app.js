@@ -67,7 +67,11 @@ function restoreFocus(f) {
   el?.focus({ preventScroll: true });
 }
 
+// A quiet refresh (a poll, a button's re-render) belongs to the view it started from: if the person has navigated since, it is dropped.
+const stale = (route, quiet) => quiet && parseRoute().raw !== route.raw;
+
 async function show(route, { quiet = false, reload = true } = {}) {
+  if (stale(route, quiet)) return;
   const my = ++state.seq;
   const view = resolve(route);
   const key = route.path.slice(0, 3).join('/') + (route.tab || '');
@@ -89,7 +93,7 @@ async function show(route, { quiet = false, reload = true } = {}) {
       return;
     }
   }
-  if (my !== state.seq) return; // a newer navigation won
+  if (my !== state.seq || stale(route, quiet)) return; // a newer navigation won
   const prev = state.key === key ? state.data : null;
   const focus = captureFocus();
   const node = view.render(data, route, (r) => show(route, { quiet: true, reload: r === true }), prev);
