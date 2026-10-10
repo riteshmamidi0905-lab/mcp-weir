@@ -1,0 +1,8 @@
+{
+  "name": "weir-control-center-browser-tests",
+  "private": true,
+  "description": "Pins the browser used by tests/test_dashboard_ui.py. Not part of the Python package.",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

@@ -102,7 +102,7 @@ What that says, and what it does not: the 62% is almost entirely injections deli
 ```bash
 git clone https://github.com/riteshmamidi0905-lab/mcp-weir.git && cd mcp-weir
 python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[test,interop,dev]'
-pytest -q                          # <!-- gen-inline:testcount -->342<!-- /gen-inline:testcount --> tests: unit, property, stdio end-to-end, official-SDK interop, harness, red-team, documentation drift
+pytest -q                          # <!-- gen-inline:testcount -->342<!-- /gen-inline:testcount --> tests recorded at release time (eval/results/tests.json): unit, property, stdio end-to-end, official-SDK interop, harness, red-team, documentation drift; the optional Control Center adds its own (docs/dashboard.md)
 python -m weir_eval.demo           # the 60-second demo, no model needed
 ```
 

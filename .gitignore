@@ -17,3 +17,4 @@ dist/
 .env
 .env.*
 !.env.example
+tests/ui/node_modules/

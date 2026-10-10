@@ -1,7 +1,11 @@
-"""Drive the Control Center in headless Chromium (Playwright for Node). Skipped where Node or Playwright is not available.
+"""Drive the Control Center in headless Chromium (Playwright for Node).
 
-Set WEIR_NODE (path to node) and WEIR_PLAYWRIGHT_DIR (a directory whose node_modules has playwright with a Chromium
-installed). The servers and databases are real: the gateway wrote them, and the suite makes a call through the gateway
+Where Node and Playwright are not available the test is skipped, unless WEIR_REQUIRE_BROWSER=1, which turns a missing
+prerequisite into a failure (the CI browser job sets it, so it cannot pass by skipping).
+
+Playwright comes from WEIR_PLAYWRIGHT_DIR (a directory whose node_modules has it, with a Chromium installed) or, by
+default, from tests/ui after ``npm ci --prefix tests/ui`` (the lockfile pins the version). Node is WEIR_NODE or the one
+on PATH. The servers and databases are real: the gateway wrote them, and the suite makes a call through the gateway
 while a page is open to check live updates.
 """
 
@@ -9,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -25,11 +30,9 @@ from weir_testbed.world import World
 
 HERE = Path(__file__).resolve().parent
 NODE = os.environ.get("WEIR_NODE") or shutil.which("node")
-PW = os.environ.get("WEIR_PLAYWRIGHT_DIR")
-
-pytestmark = pytest.mark.skipif(
-    not NODE or not PW or not (Path(PW) / "node_modules" / "playwright").exists(),
-    reason="needs Node and Playwright (WEIR_NODE, WEIR_PLAYWRIGHT_DIR)",
+PW = os.environ.get("WEIR_PLAYWRIGHT_DIR") or str(HERE / "ui")
+EXPECTED_BROWSER_TESTS = (
+    26  # docs/dashboard.md quotes this number; tests/test_dashboard_claims.py checks that it agrees
 )
 
 
@@ -47,6 +50,10 @@ def add_second_pending(db: Path) -> None:
 
 
 def test_the_interface_in_a_real_browser(tmp_path):
+    if not NODE or not (Path(PW) / "node_modules" / "playwright").exists():
+        if os.environ.get("WEIR_REQUIRE_BROWSER") == "1":
+            pytest.fail("WEIR_REQUIRE_BROWSER=1 but Node or Playwright is missing: run npm ci --prefix tests/ui")
+        pytest.skip("needs Node and Playwright (npm ci --prefix tests/ui, or WEIR_NODE and WEIR_PLAYWRIGHT_DIR)")
     db = tmp_path / "weir.db"
     seed(db)
     add_second_pending(db)
@@ -81,3 +88,11 @@ def test_the_interface_in_a_real_browser(tmp_path):
         Path(os.environ["WEIR_UI_LOG"]).write_text(r.stdout + r.stderr)
     summary = "\n".join(line for line in r.stdout.splitlines() if line.lstrip().startswith(("✔", "✖")))
     assert r.returncode == 0, summary + "\n\n" + r.stdout[-5000:] + r.stderr[-2000:]
+    counts = {k: int(v) for k, v in re.findall(r"^ℹ (tests|pass|fail|skipped|cancelled) (\d+)$", r.stdout, re.M)}
+    assert counts == {
+        "tests": EXPECTED_BROWSER_TESTS,
+        "pass": EXPECTED_BROWSER_TESTS,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0,
+    }, counts
