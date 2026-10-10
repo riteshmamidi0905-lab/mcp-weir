@@ -454,7 +454,7 @@ def test_an_unexpected_error_is_answered_with_json_and_leaks_no_traceback(db, mo
     p, _ = db
 
     def boom(*a, **k):
-        raise RuntimeError("secret internal detail /Users/someone/path")
+        raise RuntimeError("secret internal detail /example/home/dir")
 
     monkeypatch.setattr(demo, "build", boom)
     monkeypatch.setattr("weir_dashboard.model.overview", boom)
@@ -466,6 +466,6 @@ def test_an_unexpected_error_is_answered_with_json_and_leaks_no_traceback(db, mo
             status == 500
             and b"Traceback" not in body
             and b"secret internal detail" not in body
-            and b"/Users/" not in body
+            and b"/example/home/dir" not in body
         )
         assert request(app, "/api/pulse")[0] == 200, "the server keeps serving"
